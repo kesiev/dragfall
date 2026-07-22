@@ -1,0 +1,28 @@
+@font-face {
+    font-family: y224;
+    src:url('Y224/Y224.ttf') format('ttf'), 
+        url('Y224/Y224.woff2') format('woff2'),
+        url('Y224/Y224.woff') format('woff');
+    font-weight: normal;
+    font-style: normal;
+}
+
+HTML, BODY {
+    overflow: hidden;
+    padding: 0;
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    overscroll-behavior: none;
+    background-color: #000;
+}
+
+CANVAS {
+    touch-action: none;
+    image-rendering: optimizeSpeed;
+    image-rendering: -moz-crisp-edges;
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: -o-crisp-edges;
+    image-rendering: pixelated;
+    -ms-interpolation-mode: nearest-neighbor;
+}

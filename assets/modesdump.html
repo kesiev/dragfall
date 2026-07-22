@@ -1,0 +1,207 @@
+<html>
+    <head>
+        <script src="../js/gamemodes.js"></script>
+    </head>
+<body onload="onl()"></body>
+<script>
+    const
+        BLOCKS_LABEL = [
+            "color1",
+            "color2",
+            "shatterColor1",
+            "shatterColor2",
+            "shatterColumn",
+            "black",
+            "sparkleColor1",
+            "sparkleColor2"
+        ];
+
+    function createRGB(color) {
+        return "rgb("+color.r+","+color.g+","+color.b+")";
+    }
+
+    function createBlock(color, darkColor, brightColor, shadowColor) {
+        return "<div style='display:inline-block;width:20px;height:20px;border:5px solid "+darkColor+";background-color:"+color+"'></div>"+createColorBox(brightColor)+createColorBox(shadowColor);
+    }
+
+    function createColorBox(color) {
+        return "<div style='display:inline-block;width:15px;height:15px;border:1px solid #000;background-color:"+color+"'></div>"
+    }
+
+    function createColorSample(border, bg, fg) {
+        return "<div style='display:inline-block;border:3px solid "+border+";background-color:"+bg+";padding:3px;color:"+fg+"'><tt>SAMPLE</tt></div>";
+    }
+
+    function dumpPattern(pattern) {
+        let
+            out="<table style='empty-cells:show;margin:0 5px;display:inline-block' cellpadding=0 cellspacing=0>";
+
+        pattern.forEach((row)=>{
+            out+="<tr>";
+            row.forEach(cell=>{
+                let
+                    color = "#ccc";
+                if (cell)
+                    color = "#000";
+                out+="<td style='width:5px;height:7px;border:1px solid #fff;background-color:"+color+"'></td>";
+
+            })
+            out+="</tr>";
+        })
+        out+="</table>";
+
+        return out;
+    }
+
+    function dumpBlock(block) {
+        let
+            preview = "";
+            out = [];
+
+        if (block.color)
+            out.push(BLOCKS_LABEL[block.color]);
+        if (block.unshatterable)
+            out.push("unshatterable");
+        if (block.solid)
+            out.push("solid");
+        if (block.unmovable)
+            out.push("unmovable");
+
+        return dumpPattern(block.block.pattern)+out.join("/");
+    }
+
+    function dumpAction(action) {
+        let
+            out = [];
+
+        // --- Start
+        if (action.survivalMode !== undefined)
+            out.push([ "<span style='color:red'>Game mode</span>", "SURVIVAL" ]);
+        if (action.introText !== undefined)
+            out.push([ "Intro", "<tt>"+action.introText+"</tt>" ]);
+        if (action.fieldWidth !== undefined)
+            out.push([ "Field size", action.fieldWidth+"&times;"+action.fieldHeight ]);
+        if (action.blocks !== undefined)
+            out.push([ "Blocks", action.blocks.map(b=>dumpPattern(b.pattern)).join(" ") ]);
+        if (action.palette !== undefined)
+            out.push([ "Palette", createBlock(createRGB(action.palette.color1), createRGB(action.palette.darkColor1), createRGB(action.palette.brightColor1), createRGB(action.palette.shadowColor1))+" / "+createBlock(createRGB(action.palette.color2), createRGB(action.palette.darkColor2), createRGB(action.palette.brightColor2), createRGB(action.palette.shadowColor2)) ] );
+        if (action.linesPerLevel !== undefined)
+            out.push([ "Lines per level", action.linesPerLevel ]);
+        if (action.levelCap !== undefined)
+            out.push([ "Level cap", action.levelCap ]);
+        if (action.levelMultiplierRatio !== undefined)
+            out.push([ "Level multiplier", "level &times;"+action.levelMultiplierRatio ]);
+        if (action.autoDrop !== undefined)
+            out.push([ "Autodrop", action.autoDropAmount+" block(s) for "+action.autoDrop+" times ("+(action.autoDrop*action.autoDropAmount)+" block(s))" ]);
+        if (action.everyLines !== undefined)
+            out.push([ "<span style='color:#f00'>Every lines</span>", action.everyLines ]);
+        if (action.footerbarColorBorder !== undefined)
+            out.push([ "Footer bar", createColorSample(action.footerbarColorBorder, action.footerbarColor, createRGB(action.footerbarColorText)) ]);
+        if (action.gameoverColor !== undefined)
+            out.push([ "Gameover box", createColorSample(createRGB(action.gameoverColorBorder), createRGB(action.gameoverColor), createRGB(action.footerbarColorText)) ]);
+        if (action.timebarBasicHeight !== undefined)
+            out.push([ "Timebar", action.timebarBasicHeight+"px Basic: "+createColorBox(createRGB(action.timebarColor))+ "/ Critical:"+createColorBox(createRGB(action.timebarColorCritical)) ]);
+        if (action.lineClearColor !== undefined)
+            out.push([ "Line clear color", createColorBox(createRGB(action.lineClearColor)) ]);
+        if (action.rowtextColor !== undefined)
+            out.push([ "Line clear text", createColorBox(createRGB(action.rowtextColor))+" / Shadow: "+createColorBox(createRGB(action.rowtextColorShadow)) ]);
+        if (action.particlesLineClearColor)
+            out.push([ "Particles", "Line clear: "+createColorBox(createRGB(action.particlesLineClearColor)+" / Fall: "+action.particlesFallColor ) ]);
+        if (action.gameoverLines) {
+            let
+                text = action.gameoverLines.map(line=>{
+                    if (line.text)
+                        return "<tt>"+line.text+"</tt>";
+                    if (line.highScore)
+                        return "<tt>"+line.highScore+"</tt>";
+                    else if (line.score)
+                        return "<i>(score)</i>";
+                    else if (line.lines)
+                        return "<i>(lines)</i>";
+                    else if (line.level)
+                        return "<i>(level)</i>";
+                    else if (line.spacing)
+                        return "";
+                    else
+                        return "???";
+                });
+            out.push([ "Game over", "<br><div style='display:inline-block;border:1px solid #000;padding:5px;text-align:center;'>"+text.join("<br>")+"</div>" ]);
+        }
+
+        // --- Ongoing
+        if (action.setBlocksPerDrop !== undefined)
+            out.push([ "Blocks per drop", action.setBlocksPerDrop.join("/") ]);
+        if (action.setTimeLimitIsFall !== undefined)
+            out.push([ "Time limit autodrops", action.setTimeLimitIsFall ? "yes" : "no" ]);
+        if (action.setTimeLimit !== undefined)
+            out.push([ "Time limit", (action.setTimeLimit/1000)+"s" ]);
+        if (action.addIncoming !== undefined)
+            out.push([ "Add incoming blocks", "<br>"+action.addIncoming.map(b=>"&nbsp;&nbsp;["+dumpBlock(b)+"]").join("<br>") ]);
+        if (action.playMusic !== undefined)
+            out.push([ "&#127926;", action.playMusic ]);
+        if (action.setBackgroundAnimation !== undefined)
+            out.push([ "&#127909;", action.setBackgroundAnimation ]);
+        if (action.setIdleStyle !== undefined) {
+            let
+                preview = [];
+
+            action.setIdleStyle.forEach((value,id)=>{
+                if (id < 2)
+                    preview.push(createColorBox(createRGB(value)));
+                else
+                    preview.push(value);
+            })
+
+            out.push([ "Idle style", preview.join(" ") ]);
+        }
+
+        return out.map(a=>"<b>"+a[0]+"</b>: "+a[1]).join("<br>");
+    }
+
+    function onl() {
+        const
+            BACKGROUNDS = [ "#fff", "#cff", "#ffc" ];
+
+        let
+            modes = GameModes(),
+            levelHtml,
+            html = "";
+
+        modes.forEach(mode=>{
+            let
+                afterLevelBg = [];
+            html += "<h1>"+mode.label+"</h1><table><tr style='background-color:#ccc'><th>Level</th>";
+            for (let i=0;i<mode.progress.length;i++)
+                html+="<th>Track "+i+"</th>";
+            html+="</tr><tr><td style='border-bottom:1px solid #000' colspan='"+(mode.progress.length+1)+"'>";
+            html+=dumpAction(mode.initialize);
+            html+="</td></tr>";
+            for (let i=1;i<=mode.initialize.levelCap;i++) {
+                html+="<tr><td style='border-bottom:1px solid #000'>"+i+"</td>";
+                mode.progress.forEach((set,track)=>{
+                    let
+                        content = "";
+                    for (let j=0;j<set.length;j++) {
+                        let
+                            row = set[j];
+                         if ((row.atLevel == i) || ((row.afterLevel == i) || (i == 1 && (row.afterLevel == -1)))) {
+                            if (row.afterLevel)
+                                afterLevelBg[track] = afterLevelBg[track] ? (afterLevelBg[track] == 1 ? 2 : 1) : 1;
+                            content = dumpAction(row);
+                            break;
+                        }
+                    
+                    }
+                    html+="<td style='background-color:"+(BACKGROUNDS[afterLevelBg[track]]||"#fff")+";border-bottom:1px solid #000' title='Level "+i+" Track "+track+"'>";
+                    html+=content;
+                    html+="</td>";
+                })
+                html+="</tr>";
+            }
+            html+="</table>";
+        })
+
+        document.body.innerHTML = html;
+    }
+</script>
+</html>
