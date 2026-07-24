@@ -69,6 +69,17 @@ function BackgroundAnimation() {
                 callback:(t)=>{
                     with(x)for(i=35;i--;fillStyle=R(300-r/2,0,9e3/r))for(j=6;j--;fill(ellipse(960,540,r=1.18**(i*t**.1),5*r,(j+i/2+t)*.54,0,7)))beginPath()
                 }
+            },{
+                // https://www.dwitter.net/d/14063
+                callback:(t)=>{
+                    for(i=1;i<500;x.fill(p=new Path2D(),p.ellipse((S(i)*1e9+t*i)%3e3-499,i*99%1080,q=1e4/i,q,i,0,i++-1?4+4*S(9*i+t):7)))x.fillStyle=R(i/2,i,i*4)
+                }
+            },{
+                // https://www.dwitter.net/d/14063
+                // (Red version)
+                callback:(t)=>{
+                    for(i=1;i<500;x.fill(p=new Path2D(),p.ellipse(c.width-((S(i)*1e9+t*i)%3e3-499),i*99%1080,q=1e4/i,q,i,0,i++-1?4+4*S(9*i+t):7)))x.fillStyle=R(i*4,i/2,i)
+                }
             }
         ];
 

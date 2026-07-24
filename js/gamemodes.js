@@ -44,6 +44,16 @@ function GameModes() {
             brightColor2:{ r:128, g:255, b:128 },
             shadowColor2:{ r:0, g:255, b:0 },
         },
+        DEFAULT_PALETTE_4= {
+            color1:{ r:204, g:204, b:204 },
+            darkColor1:{ r:64, g:64, b:64 },
+            brightColor1:{ r:255, g:255, b:255 },
+            shadowColor1:{ r:255, g:255, b:255 },
+            color2:{ r:120, g:100, b:100 },
+            darkColor2:{ r:0, g:0, b:0 },
+            brightColor2:{ r:40, g:20, b:20 },
+            shadowColor2:{ r:60, g:30, b:30 },
+        },
         GAMEOVER_DEFAULT = [
             { fontSize:13, text:"GAME OVER", blink:true },
             { fontSize:7, highScore:"< NEW HIGH SCORE >", blink:true },
@@ -96,6 +106,76 @@ function GameModes() {
             { times:1, kick:1, pattern:[ [ 1 ] ] },
             { times:1, kick:2, pattern:[ [ 1, 1 ] ] },
             { times:1, kick:3, pattern:[ [ 1, 1, 1 ] ] }
+        ],
+        TRACK_SHATTERBLOCK = [  
+            {
+                afterLevel:-1,
+                everyLines:15,
+                addIncoming:[
+                    {
+                        special:true,
+                        color:4,
+                        unshatterable:true,
+                        solid:true,
+                        logicColor:100,
+                        block:{ kick:2, pattern:[ [ 1, 1 ], [ 1, 1 ] ]}
+                    }
+                ]
+            }
+        ],
+        TRACK_LOCKEDBLOCK =[
+            {
+                afterLevel:7,
+                everyLines:10,
+                addIncoming:[
+                    {
+                        special:true,
+                        color:5,
+                        unmovable:true,
+                        logicColor:100,
+                        block:{ kick:3, pattern:[ [ 1, 1, 1 ] ]}
+                    },{
+                        special:true,
+                        color:5,
+                        unmovable:true,
+                        logicColor:100,
+                        block:{ kick:2, pattern:[ [ 1, 1 ] ]}
+                    }
+                ]
+            },{
+                afterLevel:-1,
+                everyLines:10,
+                addIncoming:[
+                    {
+                        special:true,
+                        color:5,
+                        unmovable:true,
+                        logicColor:100,
+                        block:{ kick:2, pattern:[ [ 1, 1 ] ]}
+                    }
+                ]
+            }
+        ],
+        TRACK_LONGBLOCK = [
+            {
+                afterLevel:4,
+                everyLines:15,
+                addIncoming:[
+                    {
+                        special:true,
+                        color:6,
+                        logicColor:0,
+                        solid:true,
+                        block:{ kick:1, pattern:[ [ 1 ], [ 1 ], [ 1 ] ]}
+                    },{
+                        special:true,
+                        color:7,
+                        logicColor:1,
+                        solid:true,
+                        block:{ kick:1, pattern:[ [ 1 ], [ 1 ], [ 1 ] ]}
+                    }
+                ]
+            }
         ];
 
     return [
@@ -136,74 +216,9 @@ function GameModes() {
                 particlesFallColor:{ r:128, g:128, b:128 }
             },
             progress:[
-                [  
-                    {
-                        afterLevel:-1,
-                        everyLines:15,
-                        addIncoming:[
-                            {
-                                special:true,
-                                color:4,
-                                unshatterable:true,
-                                solid:true,
-                                logicColor:100,
-                                block:{ kick:2, pattern:[ [ 1, 1 ], [ 1, 1 ] ]}
-                            }
-                        ]
-                    }
-                ],[
-                    {
-                        afterLevel:7,
-                        everyLines:10,
-                        addIncoming:[
-                            {
-                                special:true,
-                                color:5,
-                                unmovable:true,
-                                logicColor:100,
-                                block:{ kick:3, pattern:[ [ 1, 1, 1 ] ]}
-                            },{
-                                special:true,
-                                color:5,
-                                unmovable:true,
-                                logicColor:100,
-                                block:{ kick:2, pattern:[ [ 1, 1 ] ]}
-                            }
-                        ]
-                    },{
-                        afterLevel:-1,
-                        everyLines:10,
-                        addIncoming:[
-                            {
-                                special:true,
-                                color:5,
-                                unmovable:true,
-                                logicColor:100,
-                                block:{ kick:2, pattern:[ [ 1, 1 ] ]}
-                            }
-                        ]
-                    }
-                ],[
-                    {
-                        afterLevel:4,
-                        everyLines:15,
-                        addIncoming:[
-                            {
-                                special:true,
-                                color:6,
-                                logicColor:0,
-                                solid:true,
-                                block:{ kick:1, pattern:[ [ 1 ], [ 1 ], [ 1 ] ]}
-                            },{
-                                special:true,
-                                color:7,
-                                logicColor:1,
-                                solid:true,
-                                block:{ kick:1, pattern:[ [ 1 ], [ 1 ], [ 1 ] ]}
-                            }
-                        ]
-                    }
-                ],[
+                TRACK_SHATTERBLOCK,
+                TRACK_LOCKEDBLOCK,
+                TRACK_LONGBLOCK,[
                     {
                         atLevel:26,
                         setBlocksPerDrop:[ 3 ],
@@ -590,6 +605,84 @@ function GameModes() {
                     }
                 ]
             ]
+        },{
+            id:"yinyang",
+            label:"Yinyang mode",
+            initialize:{
+                introText:"Fight the past",
+                vsYouMode:true,
+                garbageAutoDropAmount:3,
+                vsYouRecordingLength:3,
+                setGarbageLimit:1,
+                vsYouPunishmentTrack:[ [ 5000, 3 ], [ 15000, 3 ] ],
+                garbageBlocks:LINE_BLOCKS,
+                blocks:DEFAULT_BLOCKS,
+                fieldWidth:8,
+                fieldHeight:16,
+                setIdleStyle:[ { r:COLOR_OFF, g:COLOR_OFF, b:COLOR_BRIGHT }, { r:COLOR_BRIGHT, g:COLOR_BRIGHT, b:COLOR_BRIGHT }, 0.001, 0, 1, 0.4 ],
+                playMusic:"track7",
+                autoDrop:3,
+                autoDropAmount:3,
+                setTimeLimit:10000,
+                setTimeLimitIsFall:true,
+                linesPerLevel:5,
+                levelCap:30,
+                setBlocksPerDrop:[ 2 ],
+                setGarbageBlocksPerDrop:[ 2 ],
+                footerbarColorBorder:"#858585",
+                footerbarColor:"#282828",
+                footerbarColorText:{ r:255, g:255, b:255 },
+                gameoverColor:{ r:40, g:40, b:40 },
+                gameoverColorBorder:{ r:133, g:133, b:133 },
+                timebarBasicHeight:TIMEBAR_BASICHEIGHT,
+                timebarColor:TIMEBAR_COLOR,
+                timebarColorCritical:TIMEBAR_COLOR_CRITICAL,
+                rowtextColor: ROWTEXT_COLOR,
+                rowtextColorShadow: { r:0, g:0, b:0 },
+                warningRows: WARNING_ROWS,
+                gameoverLines: GAMEOVER_DEFAULT,
+                palette:DEFAULT_PALETTE_4,
+                levelMultiplierRatio: 0.2,
+                setBackgroundAnimation:8,
+                lineClearColor: LINECLEAR_COLOR,
+                particlesLineClearColor: { r:255, g:255, b:255 },
+                particlesFallColor:{ r:128, g:128, b:128 },
+                vsYouTransitions:[
+                    {
+                        setIdleStyle:[ { r:COLOR_OFF, g:COLOR_OFF, b:COLOR_BRIGHT }, { r:COLOR_BRIGHT, g:COLOR_BRIGHT, b:COLOR_BRIGHT }, 0.001, 0, 1, 0.4 ],
+                        setBackgroundAnimation:8
+                    },{
+                        setIdleStyle:[ { r:COLOR_BRIGHT, g:COLOR_OFF, b:COLOR_OFF }, { r:COLOR_BRIGHT, g:COLOR_BRIGHT, b:COLOR_BRIGHT }, -0.001, 0, 1, 0.4 ],
+                        setBackgroundAnimation:9
+                    }
+                ]
+            },
+            progress:[
+                TRACK_SHATTERBLOCK,
+                TRACK_LOCKEDBLOCK,
+                TRACK_LONGBLOCK,
+                [
+                    {
+                        atLevel:30,
+                        setGarbageLimit:7
+                    },{
+                        atLevel:25,
+                        setGarbageLimit:6
+                    },{
+                        atLevel:20,
+                        setGarbageLimit:5
+                    },{
+                        atLevel:15,
+                        setGarbageLimit:4
+                    },{
+                        atLevel:10,
+                        setGarbageLimit:3
+                    },{
+                        atLevel:5,
+                        setGarbageLimit:2
+                    }
+                ]
+            ],
         }
     ];
 }

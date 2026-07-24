@@ -69,6 +69,10 @@ function Game() {
             "Infinite #flower remix cycle",
             "https://dwitter.net/d/17621",
             "by DaSpider, pavel",
+            "",
+            "Circle Factory",
+            "https://www.dwitter.net/d/14063",
+            "by KilledByAPixel",
             "", "",
             "< MUSIC >",
             "",
@@ -90,6 +94,9 @@ function Game() {
             "Funk is a Religion",
             "remix by dj Fulanito",
             "by /diesel",
+            "",
+            "Ying Yang",
+            "by KemperBoyd1974",
             "", "",
             "< SFX >",
             "",
@@ -167,6 +174,7 @@ function Game() {
         audio, nextMusic,
         // --- Time calculation & scheduler
         timeStartE, gameE = 0, lastE = 0,
+        isSchedulerBusy,
         scheduler = [],
         // --- Game state
         gameState = GAMESTATE_LOADING,
@@ -208,7 +216,7 @@ function Game() {
         // --- Settings
         settings,
         // --- Play state
-        autodropEnded, gameStarting,
+        autodropEnded, gameStarting, isAutodropGarbage,
         isPreviouslyMovedCells, previouslyMovedCells,
         score, lines,
         level, linesPerLevel, linesToNextLevel, levelCap, levelMultiplierRatio,
@@ -219,6 +227,11 @@ function Game() {
         isGameOver,
         isHighScore,
         progress = [],
+        // --- Vs. You mode
+        vsYouMode, vsYouRecordStart, vsYouRecord, vsYouRecordGarbage, vsYouCurrentRecording, vsYouRecordingLength, vsYouPunishmentTrack, vsYouTurn,
+        vsYouGarbageTrack, vsYouGarbageTrackStart, vsYouTransitions, vsYouGarbageGivenTotal, vsYouGarbageTrackTotal,
+        // --- Garbage
+        garbageTugOfWar, garbageAutoDropAmount, incomingGarbage,
         // --- Game mode
         nextGameMode, gameMode,
         // --- Screen shake
@@ -306,17 +319,22 @@ function Game() {
     }
 
     function runSchedules() {
-        for (let i=0;i<scheduler.length;i++) {
-            if (gameE >= scheduler[i][0]) {
-                scheduler[i][1]();
-                scheduler.splice(i,1);
-                i--;
+        if (!isSchedulerBusy) {
+            isSchedulerBusy = true;
+            for (let i=0;i<scheduler.length;i++) {
+                if (gameE >= scheduler[i][0]) {
+                    scheduler[i][1]();
+                    scheduler.splice(i,1);
+                    i--;
+                }
             }
+            isSchedulerBusy = false;
         }
     }
 
     function resetScheduler() {
         scheduler.length = 0;
+        isSchedulerBusy = false;
     }
 
     // --- Background animations
@@ -726,7 +744,7 @@ function Game() {
 
                 fieldEffects.render(ctx, gameE, gridX, gridY, effectsGameOverProgress);
 
-                if (isWarning) {
+                if (isWarning || (vsYouMode && incomingGarbage)) {
                     ctx.fillStyle = "rgba(255,0,0,"+(0.3+opacity)+")";
                     ctx.fillRect(gridX,gridY,fieldWidth,cellHeight+warningWave);
                 }
@@ -772,19 +790,132 @@ function Game() {
                     let
                         timePassed = gameE - nextBlockStart,
                         timeRatio = 1-(timePassed/timeLimit);
+
+                    // --- Render bar
                     if (timePassed < timeLimit) {
-                        if (timeLimitIsFall)
-                            ctx.fillStyle = ctx.shadowColor = paletteToRGBA(timebarColorCritical,(0.7+Math.sin(timePassed/timeRatio*0.002)*0.3));
-                        else
-                            ctx.fillStyle = ctx.shadowColor = paletteToRGBA(timebarColor, (0.1+(timeRatio*0.9)));
-                        ctx.fillRect(timebarX,timebarY,Math.floor(timebarWidth*timeRatio),timebarHeight);
-                    } else if (timeLimitIsFall) {
-                        nextBlockStart = 0;
-                        if (survivalMode) {
-                            newLevel();
-                            checkProgress(true, false);
+                        let
+                            color;
+
+                        if (normalMode) {
+                            if (timeLimitIsFall)
+                                color = paletteToRGBA(timebarColorCritical,(0.7+Math.sin(timePassed/timeRatio*0.002)*0.3));
+                            else
+                                color = paletteToRGBA(timebarColor, (0.1+(timeRatio*0.9)));
+                        } else if (survivalMode) {
+                            color = paletteToRGBA(timebarColorCritical,(0.7+Math.sin(timePassed/timeRatio*0.002)*0.3));
+                        } else if (vsYouMode) {
+                            if (garbageTugOfWar > 0)
+                                color = paletteToRGBA(timebarColorCritical,(0.7+Math.sin(timePassed/timeRatio*0.002)*0.3));
+                            else
+                                color = paletteToRGBA(timebarColor, (0.1+(timeRatio*0.9)));
                         }
-                        playerDrop(true);
+
+                        ctx.fillStyle = ctx.shadowColor = color;
+                        ctx.fillRect(timebarX,timebarY,Math.floor(timebarWidth*timeRatio),timebarHeight);
+                    } else {
+
+                        // --- Manages autodrop
+                        if (timeLimitIsFall) {
+                            nextBlockStart = 0;
+                            if (survivalMode) {
+                                newLevel(true, true);
+                                checkProgress(true, false);
+                                playerDrop(true);
+                            } else if (vsYouMode) {
+                                if (incomingGarbage) {
+                                    vsYouGarbageGivenTotal+=incomingGarbage;
+                                    // --- Spawn garbage
+                                    setScoreComment(true, incomingGarbage+" garbage");
+                                    // --- First garbage is autodrop, the rest is true garbage
+                                    if (incomingGarbage > 1) {
+                                        autodropEnded = 0;
+                                        isAutodropGarbage = true;
+                                        autoDrops = incomingGarbage-1;
+                                        autoDropAmount = garbageAutoDropAmount;
+                                    } else {
+                                        autodropEnded = 2;
+                                    }
+                                    playerDrop(true);
+                                } else {
+                                    // --- New time window
+                                    nextBlockStart = gameE;
+                                    autodropEnded = 2;
+                                }
+                                garbageTugOfWar = 0;
+                                incomingGarbage = 0;
+                                vsYouCurrentRecording++;
+                                if (vsYouCurrentRecording >= vsYouRecordingLength) {
+                                    let
+                                        newLevelSound = true;
+
+                                    vsYouCurrentRecording = 0;
+                                    vsYouGarbageTrackStart = gameE;
+                                    if (vsYouRecordGarbage == 0) {
+                                        // --- Punish bad play
+                                        vsYouGarbageTrack = [];
+                                        vsYouPunishmentTrack.forEach((garbage)=>{
+                                            vsYouGarbageTrack.push(garbage);
+                                        })
+                                        setScoreComment(true, "PUNISHMENT!");
+                                        audio.playAudio(audio.audio.gameover);
+                                    } else {
+                                        // --- Perfect bonus
+                                        if (!vsYouGarbageGivenTotal && vsYouGarbageTrackTotal) {
+                                            addScore(level * vsYouGarbageTrackTotal * 5);
+                                            commitScore();
+                                            setScoreComment(true, "PERFECT!");
+                                            audio.playAudio(audio.audio.perfect);
+                                            newLevelSound = false;
+                                        }
+                                        // --- Play last recording
+                                        vsYouGarbageTrack = vsYouRecord;
+                                    }
+                                    vsYouRecord = [];
+                                    vsYouRecordStart = gameE;
+                                    vsYouRecordGarbage = 0;
+                                    vsYouGarbageTrackTotal = 0;
+                                    vsYouGarbageGivenTotal = 0;
+                                    // --- Change background
+                                    vsYouTurn = (vsYouTurn + 1) % 2;
+                                    runEvent(vsYouTransitions[vsYouTurn]);
+                                    // --- New level
+                                    newLevel(false, newLevelSound);
+                                    checkProgress(true, false);
+                                } else {
+                                    audio.playAudio(audio.audio.step, false, 0, 1.5);
+                                }
+                            } else {
+                                playerDrop(true);
+                            }
+                        }
+
+                    }
+
+                    // --- Manage garbage
+                    if (vsYouGarbageTrack) {
+                        let
+                            addedGarbage = 0,
+                            pos = gameE - vsYouGarbageTrackStart;
+
+                        for (let i=0;i<vsYouGarbageTrack.length;i++) {
+                            let
+                                entry = vsYouGarbageTrack[i];
+                            if (entry[0]<=pos) {
+                                addedGarbage += entry[1];
+                                vsYouGarbageTrackTotal += entry[1];
+                                vsYouGarbageTrack.splice(i,1);
+                                i--;
+                            } else
+                                break;
+                        }
+
+                        if (addedGarbage) {
+                            garbageTugOfWar += addedGarbage;
+                            incomingGarbage = Math.max(0, Math.min(garbageLimit, garbageTugOfWar));
+                            showDeltaScore("+"+addedGarbage+" garbage");
+                            if (incomingGarbage > 0)
+                                audio.playAudio(audio.audio.garbage);
+                        }
                     }
                 }
 
@@ -827,7 +958,12 @@ function Game() {
                     ctx.textBaseline = "middle";
                 }
                 
-                if (isWarning) {
+                if (vsYouMode && incomingGarbage) {
+                    ctx.font = warningFont;
+                    ctx.shadowColor = WARNING_COLOR_SHADOW;
+                    ctx.fillStyle = "rgba(255,255,255,"+(0.8-opacity)+")";
+                    ctx.fillText(incomingGarbage+" GARBAGE",warningX, warningY);
+                } else if (isWarning) {
                     ctx.font = warningFont;
                     ctx.shadowColor = WARNING_COLOR_SHADOW;
                     ctx.fillStyle = "rgba(255,255,255,"+(0.8-opacity)+")";
@@ -917,6 +1053,9 @@ function Game() {
         next = new Next(LOGICCOLORS, seed);
         next.setAmount(mode.initialize.setBlocksPerDrop);
         next.setBlocks(mode.initialize.blocks);
+        garbageNext = new Next(LOGICCOLORS, seed);
+        garbageNext.setAmount(mode.initialize.setGarbageBlocksPerDrop || mode.initialize.setBlocksPerDrop);
+        garbageNext.setBlocks(mode.initialize.garbageBlocks || mode.initialize.blocks);
         random = new Random(seed);
         fieldEffects = new FieldEffects(false, true, field);
         fieldEffects.setIdleColors(
@@ -934,7 +1073,10 @@ function Game() {
         timeLimit = mode.initialize.setTimeLimit;
         timeLimitIsFall = mode.initialize.setTimeLimitIsFall;
         survivalMode = mode.initialize.survivalMode;
-        normalMode = !survivalMode;
+        vsYouMode = mode.initialize.vsYouMode;
+        vsYouTransitions = mode.initialize.vsYouTransitions;
+        garbageAutoDropAmount = mode.initialize.garbageAutoDropAmount;
+        normalMode = !survivalMode && !vsYouMode;
         introText = mode.initialize.introText;
         levelCap = mode.initialize.levelCap;
         footerbarColorBorder = mode.initialize.footerbarColorBorder;
@@ -953,6 +1095,9 @@ function Game() {
         particlesLineClearColor = mode.initialize.particlesLineClearColor;
         particlesFallColor = mode.initialize.particlesFallColor;
         gameoverLines = mode.initialize.gameoverLines;
+        vsYouRecordingLength = mode.initialize.vsYouRecordingLength;
+        vsYouPunishmentTrack = mode.initialize.vsYouPunishmentTrack;
+        garbageLimit = mode.initialize.setGarbageLimit;
         setPalette(mode.initialize.palette);
 
         if (mode.initialize.setBackgroundAnimation !== null) {
@@ -977,8 +1122,20 @@ function Game() {
         isHighScore = false;
         isNotPaused = true;
         timeStartE = 0;
+        garbageTugOfWar = 0;
+        incomingGarbage = 0;
+        vsYouRecord = [];
+        vsYouRecordStart = 0;
+        vsYouRecordGarbage = 0;
+        vsYouCurrentRecording = 0;
+        vsYouGarbageTrack = 0;
+        vsYouGarbageTrackStart = 0;
+        vsYouGarbageTrackTotal = 0;
+        vsYouGarbageGivenTotal = 0;
+        vsYouTurn = 0;
         linesPerLevel = mode.initialize.linesPerLevel;
         linesToNextLevel = linesPerLevel;
+        isAutodropGarbage = false;
         mode.progress.forEach((_,id)=>{
             progress[id] = { lines:0, random:new Random(seed+id) };
         })
@@ -1020,10 +1177,14 @@ function Game() {
             score += a;
         }
     }
+    
+    function showDeltaScore(text) {
+        deltaScoreEffect = { text:text, font:deltaScoreEffectFont, color:footerbarColorText, shadowColor:rowtextColorShadow, speed:DELTASCORE_SPEED, blur:deltaScoreBlur, slide:deltaScoreSlide, delay:0, isVertical:true };
+    }
 
     function commitScore(a) {
         if (deltaScore) {
-            deltaScoreEffect = { text:"+"+deltaScore+" pts.", font:deltaScoreEffectFont, color:footerbarColorText, shadowColor:rowtextColorShadow, speed:DELTASCORE_SPEED, blur:deltaScoreBlur, slide:deltaScoreSlide, delay:0, isVertical:true };
+            showDeltaScore("+"+deltaScore+" pts.");
             deltaScore = 0;
         }
     }
@@ -1253,15 +1414,16 @@ function Game() {
     function generateNextBlocks() {
         let
             sparkledColumns = [],
-            failures = next.failureLimit,
+            nxt = autoDrops && isAutodropGarbage ? garbageNext : next,
+            failures = nxt.failureLimit,
             amount = 0,
             isSpecial = false,
-            amountLimit =  autoDrops ? autoDropAmount : next.getAmount();
+            amountLimit =  autoDrops ? autoDropAmount : nxt.getAmount();
 
         do {
             let
                 placed = false,
-                blockModel = next.get(),
+                blockModel = nxt.get(),
                 coordinates = [],
                 block = new Block(0, 0, blockModel.color, blockModel.logicColor, blockModel.unshatterable, blockModel.solid, blockModel.unmovable, blockModel.block.pattern);
 
@@ -1294,7 +1456,7 @@ function Game() {
             } while (coordinates.length);
 
             if (placed) {
-                failures = next.failureLimit;
+                failures = nxt.failureLimit;
                 amount++;
             } else {
                 failures--;
@@ -1357,12 +1519,55 @@ function Game() {
         explosionAtCell(cell, shatterEffectColor, PARTICLE_DURATION);
     }
 
-    function newLevel() {
+    function newLevel(priority, sound) {
         if (level < levelCap) {
             level++;
-            audio.playAudio(audio.audio.newLevel);
-            setScoreComment(true, "LEVEL "+level);
+            if (sound) {
+                audio.playAudio(audio.audio.newLevel);
+            }
+            setScoreComment(priority, "LEVEL "+level);
         }
+    }
+
+    function runEvent(event, progressItem) {
+        // --- Add new incoming block
+        if (event.addIncoming)
+            next.addIncoming(progressItem.random.element(event.addIncoming));
+        // --- Change spawing amount
+        if (event.setBlocksPerDrop)
+            next.setAmount(event.setBlocksPerDrop);
+        // --- Change autofall
+        if (event.setTimeLimitIsFall !== undefined)
+            timeLimitIsFall = event.setTimeLimitIsFall;
+        // --- Change time limit speed
+        if (event.setTimeLimit !== undefined)
+            timeLimit = event.setTimeLimit;
+        // --- Change colors
+        if (event.setIdleStyle)
+            fieldEffects.setIdleColors(
+                event.setIdleStyle[0],
+                event.setIdleStyle[1],
+                event.setIdleStyle[2],
+                event.setIdleStyle[3],
+                event.setIdleStyle[4],
+                event.setIdleStyle[5]
+            );
+        // --- Change music
+        if (event.playMusic)
+            audio.mixerPlayMusic(audio.audio[event.playMusic]);
+        // --- Change background
+        if (event.setBackgroundAnimation !== undefined)
+            fadeToBackgroundAnimation(event.setBackgroundAnimation);
+        // --- Garbage limit
+        if (event.setGarbageLimit !== undefined)
+            garbageLimit = event.setGarbageLimit;
+        // --- Autodrops
+        if (event.autoDrop) {
+            autodropEnded = 0;
+            autoDrops = event.autoDrop;
+        }
+        if (event.autoDropAmount)
+            autoDropAmount = event.autoDropAmount;
     }
 
     function checkProgress(newLevel, newLine) {
@@ -1385,41 +1590,7 @@ function Game() {
                 ) {
                     if (!event.everyLines || (newLine && (progressItem.lines >= event.everyLines))) {
                         progressItem.lines = 0;
-                        // --- Add new incoming block
-                        if (event.addIncoming)
-                            next.addIncoming(progressItem.random.element(event.addIncoming));
-                        // --- Change spawing amount
-                        if (event.setBlocksPerDrop)
-                            next.setAmount(event.setBlocksPerDrop);
-                        // --- Change autofall
-                        if (event.setTimeLimitIsFall !== undefined)
-                            timeLimitIsFall = event.setTimeLimitIsFall;
-                        // --- Change time limit speed
-                        if (event.setTimeLimit !== undefined)
-                            timeLimit = event.setTimeLimit;
-                        // --- Change colors
-                        if (event.setIdleStyle)
-                            fieldEffects.setIdleColors(
-                                event.setIdleStyle[0],
-                                event.setIdleStyle[1],
-                                event.setIdleStyle[2],
-                                event.setIdleStyle[3],
-                                event.setIdleStyle[4],
-                                event.setIdleStyle[5]
-                            );
-                        // --- Change music
-                        if (event.playMusic)
-                            audio.mixerPlayMusic(audio.audio[event.playMusic]);
-                        // --- Change background
-                        if (event.setBackgroundAnimation !== undefined)
-                            fadeToBackgroundAnimation(event.setBackgroundAnimation);
-                        // --- Autodrops
-                        if (event.autoDrop) {
-                            autodropEnded = 0;
-                            autoDrops = event.autoDrop;
-                        }
-                        if (event.autoDropAmount)
-                            autoDropAmount = event.autoDropAmount;
+                        runEvent(event, progressItem);
                     }
                     break;
                 }
@@ -1472,17 +1643,20 @@ function Game() {
                 preparedLines.lines.forEach((line,lid)=>{
                     // --- Manage lines
                     lines++;
-                    if (normalMode) {
+                    if (normalMode)
                         if (level < levelCap) {
                             linesToNextLevel--;
                             if (linesToNextLevel<=0) {
-                                newLevel();
+                                newLevel(true, true);
                                 isNewLevel = true;
                                 linesToNextLevel = linesPerLevel;
                             }
                         }
+
+                    // --- Check lines progress
+                    if (normalMode || vsYouMode)
                         checkProgress(isNewLevel, true);
-                    }
+
                     // --- Manage score
                     combo++;
                     rowTextEffects[line.row] = { text:"CHAIN x"+combo, font:rowTextEffectFont, color:rowtextColor, shadowColor:rowtextColorShadow, speed:ROWTEXT_SPEED, delay:lid*ROWTEXT_DELAY, blur:rowTextBlur, slide:rowTextSlide };
@@ -1539,9 +1713,17 @@ function Game() {
             } else {
                 // --- End combo
                 commitScore();
+                if (vsYouMode && (combo > 1)) {
+                    let
+                        power = combo - 1;
+                    vsYouRecord.push([ gameE-vsYouRecordStart, power ]);
+                    garbageTugOfWar -= power;
+                    vsYouRecordGarbage += power;
+                    incomingGarbage = Math.max(0, Math.min(garbageLimit, garbageTugOfWar));
+                }
                 combo = 0;
                 isGameOver = false;
-                if (survivalMode) {
+                if (survivalMode || vsYouMode) {
                     if (autoDrops)
                         nextBlockStart = 0;
                     else if (autodropEnded == 2) {
@@ -1563,7 +1745,7 @@ function Game() {
                             break;
                         }
                 if (isGameOver || (
-                    (normalMode && !generateNextBlocks()) ||
+                    ((normalMode || vsYouMode) && !generateNextBlocks()) ||
                     (survivalMode && autoDrops && !generateNextBlocks())
                 ))
                     // --- End game
@@ -1582,6 +1764,8 @@ function Game() {
                     if (autodropEnded == 1) {
                         autodropEnded = 2;
                         if (gameStarting) {
+                            vsYouRecordStart = gameE;
+                            vsYouRecordGarbage = 0;
                             gameStarting = false;
                             setScoreComment(true, introText);
                             audio.playMusic(audio.audio[nextMusic]);
@@ -1841,12 +2025,15 @@ function Game() {
                 { id:"special", file:"audio/effects/special" },
                 { id:"blocked", file:"audio/effects/blocked" },
                 { id:"warning", file:"audio/effects/warning" },
+                { id:"garbage", file:"audio/effects/garbage" },
+                { id:"perfect", file:"audio/effects/perfect" },
                 { id:"track1", mod:"audio/music/club_desire.xm" },
                 { id:"track2", mod:"audio/music/clubb_mix_star.xm" },
                 { id:"track3", mod:"audio/music/club_-_train_-.xm" },
                 { id:"track4", mod:"audio/music/clubbing.xm" },
                 { id:"track5", mod:"audio/music/acid_attack.xm" },
                 { id:"track6", mod:"audio/music/funk_is_a_religion.xm" },
+                { id:"track7", mod:"audio/music/ying_yang.xm" },
             ],(a, b)=>{
                 loadingTotal = a;
                 loadingLoaded = b;

@@ -51,10 +51,11 @@ function Field(width, height) {
 
                     if (
                         blockCell.cell.links[side.index] &&
-                        isFieldFilled(dx, dy) &&
                         done.isNotSet(dx, dy)
                     ) {
                         blockProcessing = true;
+                        if (!field[dy] || !field[dy][dx]) // TODO: Remove when the random broken piece bug disappeared.
+                            debugger;
                         cells.push({ x:dx, y:dy, cell:field[dy][dx] });
                         done.set(dx, dy);
                         blockGrid.set(dx, dy);
@@ -119,8 +120,8 @@ function Field(width, height) {
         if (cell.links[side]) {
             let
                 oppositeSide = (side+2)%4;
-            cell.links[side] = 0;
             field[y+SIDES[side].dy][x+SIDES[side].dx].links[oppositeSide] = 0;
+            cell.links[side] = 0;
         }
     }
 

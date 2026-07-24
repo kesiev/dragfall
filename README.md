@@ -72,7 +72,16 @@ Looking for videos of the first game, I remembered that I used to play _Survival
     <p>Burst mode</p>
 </div>
 
-There is a lot of room for creating more game modes and new gameplay ideas, but 3 modes are more than enough for me.
+There is a lot of room for creating more game modes and new gameplay ideas, but 3 modes ~~are~~ were more than enough for me.
+
+Feeling a little lonely? So am I! After release, I've added the _Yinyang mode_, which basically is a classic Vs. mode against _yourself in the past_.
+
+The game records the garbage you generate for ~30 seconds, and then it sends that back to you in the following ~30 seconds with the same timing. You can cancel incoming garbage stacking higher combos in 10-second rounds _à la tug-of-war_, but then you'll have to fight _that better version of you_. The game will unleash _your fury against yourself_, level after level. Have fun!
+
+<div align="center" style="margin:60px 0">
+    <p><img src="markdown/shot4.png"></p>
+    <p>Yinyang mode</p>
+</div>
 
 Anyway, I've tried to make creating new modes [fairly](js/gamemodes.js) [simple](https://www.kesiev.com/dragfall/assets/modesdump.html), just in case.
 
@@ -121,7 +130,8 @@ The game works natively on multiple resolutions with optional scaling, fullscree
  - [d/34124](https://www.dwitter.net/d/34124) by rodrigo.siqueira, UEZ
  - [d/1369](https://www.dwitter.net/d/1369) by tomkh
  - [Infinite #flower remix cycle](https://dwitter.net/d/17621) by DaSpider, pavel
-
+ - [Circle Factory](https://www.dwitter.net/d/14063) by KilledByAPixel
+            
 #### Music
 
  - [Acid Attack](https://modarchive.org/index.php?request=view_by_moduleid&query=149203) by resound/pepper
@@ -130,6 +140,7 @@ The game works natively on multiple resolutions with optional scaling, fullscree
  - [Clubb Mix Star](https://modarchive.org/index.php?request=view_by_moduleid&query=150792) by bohema recordz crew
  - [Clubbing on Delirium](https://modarchive.org/index.php?request=view_by_moduleid&query=194537) by Origin/Nemesis
  - [Funk is a Religion](https://modarchive.org/index.php?request=view_by_moduleid&query=134285) remix by dj Fulanito, original by /diesel
+ - [Ying Yang][https://modarchive.org/index.php?request=view_by_moduleid&query=138705] by KemperBoyd1974
 
 #### Sound effects
 

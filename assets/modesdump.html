@@ -73,16 +73,50 @@
     function dumpAction(action) {
         let
             out = [];
+/*
+                vsYouTransitions:[
+                    {
+                        setIdleStyle:[ { r:COLOR_OFF, g:COLOR_OFF, b:COLOR_BRIGHT }, { r:COLOR_BRIGHT, g:COLOR_BRIGHT, b:COLOR_BRIGHT }, 0.001, 0, 1, 0.4 ],
+                        setBackgroundAnimation:8
+                    },{
+                        setIdleStyle:[ { r:COLOR_BRIGHT, g:COLOR_OFF, b:COLOR_OFF }, { r:COLOR_BRIGHT, g:COLOR_BRIGHT, b:COLOR_BRIGHT }, -0.001, 0, 1, 0.4 ],
+                        setBackgroundAnimation:9
+                    }
+                ]
+
+
+*/
+
 
         // --- Start
         if (action.survivalMode !== undefined)
             out.push([ "<span style='color:red'>Game mode</span>", "SURVIVAL" ]);
+        if (action.vsYouMode !== undefined)
+            out.push([ "<span style='color:red'>Game mode</span>", "VS. YOU" ]);
         if (action.introText !== undefined)
             out.push([ "Intro", "<tt>"+action.introText+"</tt>" ]);
         if (action.fieldWidth !== undefined)
             out.push([ "Field size", action.fieldWidth+"&times;"+action.fieldHeight ]);
         if (action.blocks !== undefined)
             out.push([ "Blocks", action.blocks.map(b=>dumpPattern(b.pattern)).join(" ") ]);
+
+        if (action.vsYouRecordingLength !== undefined)
+            out.push([ "Vs. You recording length", action.vsYouRecordingLength+" &times; "+(action.setTimeLimit/1000)+"s" ]);
+        if (action.vsYouPunishmentTrack !== undefined)
+            out.push([ "Vs. You punishment track", action.vsYouPunishmentTrack.map(a=>a[1]+" garbage after "+(a[0]/1000)+"s").join(", ") ]);
+        if (action.vsYouTransitions !== undefined)
+            out.push([ "Vs. You transitions", action.vsYouTransitions.map((a,id)=>"<br><div style='display:inline-block;border:1px solid #000;padding:5px;'><b>Phase "+(id+1)+":</b><br>"+dumpAction(a)+"</div>").join("") ]);
+
+
+        if (action.garbageBlocks !== undefined)
+            out.push([ "Garbage blocks", action.garbageBlocks.map(b=>dumpPattern(b.pattern)).join(" ") ]);
+        if (action.garbageAutoDropAmount !== undefined)
+            out.push([ "Garbage autodrop", action.garbageAutoDropAmount+" set(s)" ]);
+        if (action.setGarbageLimit !== undefined)
+            out.push([ "Garbage blocks limit", "max "+action.setGarbageLimit+" set(s) of blocks" ]);
+        if (action.setGarbageBlocksPerDrop !== undefined)
+            out.push([ "Garbage blocks per set", action.setGarbageBlocksPerDrop.join("/") ]);
+
         if (action.palette !== undefined)
             out.push([ "Palette", createBlock(createRGB(action.palette.color1), createRGB(action.palette.darkColor1), createRGB(action.palette.brightColor1), createRGB(action.palette.shadowColor1))+" / "+createBlock(createRGB(action.palette.color2), createRGB(action.palette.darkColor2), createRGB(action.palette.brightColor2), createRGB(action.palette.shadowColor2)) ] );
         if (action.linesPerLevel !== undefined)
@@ -93,6 +127,8 @@
             out.push([ "Level multiplier", "level &times;"+action.levelMultiplierRatio ]);
         if (action.autoDrop !== undefined)
             out.push([ "Autodrop", action.autoDropAmount+" block(s) for "+action.autoDrop+" times ("+(action.autoDrop*action.autoDropAmount)+" block(s))" ]);
+
+        
         if (action.everyLines !== undefined)
             out.push([ "<span style='color:#f00'>Every lines</span>", action.everyLines ]);
         if (action.footerbarColorBorder !== undefined)
