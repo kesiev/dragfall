@@ -14,7 +14,7 @@ function Game() {
         // --- Title screen
         GAME_LOCALSTORAGE = "_DRAGFALL";
         GAME_NAME = "DRAGFALL",
-        GAME_VERSION = "0.1";
+        GAME_VERSION = "0.1.1";
         GAME_FOOTER = [ "Drag up-down", "Hit to select", "v"+GAME_VERSION+" by KesieV" ],
         GAME_CREDITS_MUSIC = "track2",
         GAME_GITHUB = "http://github.com/kesiev/dragfall",
