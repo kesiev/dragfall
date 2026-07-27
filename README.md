@@ -140,7 +140,7 @@ The game works natively on multiple resolutions with optional scaling, fullscree
  - [Clubb Mix Star](https://modarchive.org/index.php?request=view_by_moduleid&query=150792) by bohema recordz crew
  - [Clubbing on Delirium](https://modarchive.org/index.php?request=view_by_moduleid&query=194537) by Origin/Nemesis
  - [Funk is a Religion](https://modarchive.org/index.php?request=view_by_moduleid&query=134285) remix by dj Fulanito, original by /diesel
- - [Ying Yang][https://modarchive.org/index.php?request=view_by_moduleid&query=138705] by KemperBoyd1974
+ - [Ying Yang](https://modarchive.org/index.php?request=view_by_moduleid&query=138705) by KemperBoyd1974
 
 #### Sound effects
 
