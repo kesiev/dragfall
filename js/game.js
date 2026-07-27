@@ -174,7 +174,6 @@ function Game() {
         audio, nextMusic,
         // --- Time calculation & scheduler
         timeStartE, gameE = 0, lastE = 0,
-        isSchedulerBusy,
         scheduler = [],
         // --- Game state
         gameState = GAMESTATE_LOADING,
@@ -216,7 +215,7 @@ function Game() {
         // --- Settings
         settings,
         // --- Play state
-        autodropEnded, gameStarting, isAutodropGarbage,
+        autodropEnded, gameStarting, isAutodropGarbage, schedulePlayerDrop,
         isPreviouslyMovedCells, previouslyMovedCells,
         score, lines,
         level, linesPerLevel, linesToNextLevel, levelCap, levelMultiplierRatio,
@@ -319,22 +318,17 @@ function Game() {
     }
 
     function runSchedules() {
-        if (!isSchedulerBusy) {
-            isSchedulerBusy = true;
-            for (let i=0;i<scheduler.length;i++) {
-                if (gameE >= scheduler[i][0]) {
-                    scheduler[i][1]();
-                    scheduler.splice(i,1);
-                    i--;
-                }
+        for (let i=0;i<scheduler.length;i++) {
+            if (gameE >= scheduler[i][0]) {
+                scheduler[i][1]();
+                scheduler.splice(i,1);
+                i--;
             }
-            isSchedulerBusy = false;
         }
     }
 
     function resetScheduler() {
         scheduler.length = 0;
-        isSchedulerBusy = false;
     }
 
     // --- Background animations
@@ -815,12 +809,12 @@ function Game() {
                     } else {
 
                         // --- Manages autodrop
-                        if (timeLimitIsFall) {
+                        if (timeLimitIsFall && !schedulePlayerDrop) {
                             nextBlockStart = 0;
                             if (survivalMode) {
                                 newLevel(true, true);
                                 checkProgress(true, false);
-                                playerDrop(true);
+                                autoPlayerDrop();
                             } else if (vsYouMode) {
                                 if (incomingGarbage) {
                                     vsYouGarbageGivenTotal+=incomingGarbage;
@@ -835,7 +829,7 @@ function Game() {
                                     } else {
                                         autodropEnded = 2;
                                     }
-                                    playerDrop(true);
+                                    autoPlayerDrop();
                                 } else {
                                     // --- New time window
                                     nextBlockStart = gameE;
@@ -885,7 +879,7 @@ function Game() {
                                     audio.playAudio(audio.audio.step, false, 0, 1.5);
                                 }
                             } else {
-                                playerDrop(true);
+                                autoPlayerDrop();
                             }
                         }
 
@@ -1135,7 +1129,8 @@ function Game() {
         vsYouTurn = 0;
         linesPerLevel = mode.initialize.linesPerLevel;
         linesToNextLevel = linesPerLevel;
-        isAutodropGarbage = false;
+        isAutodropGarbage = false,
+        schedulePlayerDrop = false,
         mode.progress.forEach((_,id)=>{
             progress[id] = { lines:0, random:new Random(seed+id) };
         })
@@ -1499,6 +1494,15 @@ function Game() {
         }
     }
 
+    function autoPlayerDrop(force) {
+        // --- If autodropping during player turn, instantly player drop
+        if (isInteractive)
+            playerDrop(true);
+        else
+            // --- Else schedules a player drop instead of making the player interactive at the end of the game turn
+            schedulePlayerDrop = true;
+    }
+
     function explosionAtCell(cell, color, duration) {
          for (let i=0;i<5;i++)
             particles.addLinear(
@@ -1759,8 +1763,12 @@ function Game() {
                         if (!autoDrops)
                             autodropEnded = 1;
                         schedule(gameTurn,10);
-                    } else
+                    } else if (schedulePlayerDrop) {
+                        schedulePlayerDrop = false;
+                        playerDrop(true);
+                    } else {
                         isInteractive = true;
+                    }
                     if (autodropEnded == 1) {
                         autodropEnded = 2;
                         if (gameStarting) {
