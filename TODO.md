@@ -1,7 +1,7 @@
 # TODO
 
  - [ ] Investigate the _drop the current blocks if you liked their spawn zone without having to move them_ rule
- - [ ] Add keyborad mode: _arrow keys and space bar/Enter or something_
+ - [ ] Add keyboard mode: _arrow keys and space bar/Enter or something_
  - [ ] Add mouse scrolling on menus: _mouse-scrolling to navigate through the menu_
  - [ ] Press Escape to get to the menu
  - [ ] Summon the next burst waves using a button
