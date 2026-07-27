@@ -1479,7 +1479,7 @@ function Game() {
                 timePassed = gameE - nextBlockStart,
                 isValidMove = movingBlock.x != movingBlockStart;
 
-            if (normalMode && (timePassed < timeLimit))
+            if (normalMode && (timePassed < timeLimit) && isValidMove)
                 addScore(1);
 
             field.addBlock(movingBlock);
