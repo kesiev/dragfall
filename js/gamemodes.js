@@ -14,6 +14,8 @@ function GameModes() {
         ROWTEXT_COLOR_SHADOW = { r:0, g:0, b: 0 },
         LINECLEAR_COLOR = { r:255, g:255, b:255 },
         WARNING_ROWS = 3,
+        CURSORCOLOR_DEFAULT = "#f00",
+        CURSORCOLOR_DRAG_DEFAULT = "#f99",
         DEFAULT_PALETTE= {
             color1:{ r:204, g:204, b:34 },
             darkColor1:{ r:64, g:64, b:0 },
@@ -191,6 +193,8 @@ function GameModes() {
                 playMusic:"track1",
                 autoDrop:3,
                 autoDropAmount:3,
+                allClearAutoDrop:3,
+                allClearAutoDropAmount:3,
                 setTimeLimit:TIMELIMIT_DEFAULT,
                 setTimeLimitIsFall:false,
                 linesPerLevel:10,
@@ -213,7 +217,9 @@ function GameModes() {
                 lineClearColor: LINECLEAR_COLOR,
                 gameoverLines: GAMEOVER_DEFAULT,
                 particlesLineClearColor: { r:255, g:255, b:255 },
-                particlesFallColor:{ r:128, g:128, b:128 }
+                particlesFallColor:{ r:128, g:128, b:128 },
+                cursorColor:CURSORCOLOR_DEFAULT,
+                cursorColorDrag:CURSORCOLOR_DRAG_DEFAULT
             },
             progress:[
                 TRACK_SHATTERBLOCK,
@@ -378,6 +384,8 @@ function GameModes() {
                 playMusic:"track5",
                 autoDrop:5,
                 autoDropAmount:3,
+                allClearAutoDrop:5,
+                allClearAutoDropAmount:3,
                 setTimeLimit:TIMELIMIT_FAST,
                 setTimeLimitIsFall:true,
                 linesPerLevel:5,
@@ -400,7 +408,9 @@ function GameModes() {
                 setBackgroundAnimation:6,
                 lineClearColor: { r:255, g:0, b:0 },
                 particlesLineClearColor: { r:0, g:0, b:0 },
-                particlesFallColor:{ r:255, g:255, b:128 }
+                particlesFallColor:{ r:255, g:255, b:128 },
+                cursorColor:"#fff",
+                cursorColorDrag:CURSORCOLOR_DRAG_DEFAULT
             },
             progress:[
                 [  
@@ -485,6 +495,8 @@ function GameModes() {
                 playMusic:"track6",
                 autoDrop:5,
                 autoDropAmount:3,
+                allClearAutoDrop:5,
+                allClearAutoDropAmount:3,
                 setTimeLimit:10000,
                 setTimeLimitIsFall:true,
                 linesPerLevel:5,
@@ -507,7 +519,9 @@ function GameModes() {
                 setBackgroundAnimation:7,
                 lineClearColor: { r:0, g:255, b:0 },
                 particlesLineClearColor: { r:255, g:128, b:128 },
-                particlesFallColor:{ r:128, g:255, b:128 }
+                particlesFallColor:{ r:128, g:255, b:128 },
+                cursorColor:CURSORCOLOR_DEFAULT,
+                cursorColorDrag:"#fff"
             },
             progress:[
                 [
@@ -623,6 +637,8 @@ function GameModes() {
                 playMusic:"track7",
                 autoDrop:3,
                 autoDropAmount:3,
+                allClearAutoDrop:3,
+                allClearAutoDropAmount:3,
                 setTimeLimit:10000,
                 setTimeLimitIsFall:true,
                 linesPerLevel:5,
@@ -647,6 +663,8 @@ function GameModes() {
                 lineClearColor: LINECLEAR_COLOR,
                 particlesLineClearColor: { r:255, g:255, b:255 },
                 particlesFallColor:{ r:128, g:128, b:128 },
+                cursorColor:CURSORCOLOR_DEFAULT,
+                cursorColorDrag:CURSORCOLOR_DRAG_DEFAULT,
                 vsYouTransitions:[
                     {
                         setIdleStyle:[ { r:COLOR_OFF, g:COLOR_OFF, b:COLOR_BRIGHT }, { r:COLOR_BRIGHT, g:COLOR_BRIGHT, b:COLOR_BRIGHT }, 0.001, 0, 1, 0.4 ],

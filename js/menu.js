@@ -20,25 +20,58 @@ function Menu(options, selectedOption, onchange, lines, color1, color2, colorfon
 
     let
         self = {
-            moveDown:()=>{
-                if (isEnabled && options[selectedOption+1]) {
-                    forceUpdate = true;
-                    selectedOption++;
-                    onchange();
-                    return true;
+            moveDown:(warp)=>{
+                if (isEnabled) {
+                    let
+                        nextSelected = selectedOption+1;
+
+                    if (warp && (nextSelected >= options.length))
+                        nextSelected = 0;
+
+                    if (options[nextSelected]) {
+                        forceUpdate = true;
+                        selectedOption = nextSelected;
+                        onchange();
+                        return true;
+                    }
                 }
             },
-            moveUp:()=>{
-                if (isEnabled && options[selectedOption-1]) {
-                    forceUpdate = true;
-                    selectedOption--;
-                    onchange();
-                    return true;
+            moveUp:(warp)=>{
+                if (isEnabled) {
+                    let
+                        nextSelected = selectedOption-1;
+
+                    if (warp && (nextSelected < 0))
+                        nextSelected = options.length-1;
+
+                    if (options[nextSelected]) {
+                        forceUpdate = true;
+                        selectedOption = nextSelected;
+                        onchange();
+                        return true;
+                    }
                 }
             },
             select:()=>{
                 if (isEnabled)
                     options[selectedOption].onSelect(self, selectedOption);
+            },
+            back:()=>{
+                 if (isEnabled) {
+                    let
+                        backOption;
+
+                    options.forEach((option,id)=>{
+                        if (option.isBackOption)
+                            backOption = id;
+                    })
+
+                    if (backOption !== undefined) {
+                        forceUpdate = true;
+                        selectedOption = backOption;
+                        return self.select();
+                    }
+                }
             },
             disable:()=>{
                 isEnabled = false;

@@ -8,13 +8,14 @@ const
 
 function Game() {
     const
+        DEBUG = false,
         // --- Display
         MIN_FONTSIZE = 8,
         PADDING_RATIO = 0.01,
         // --- Title screen
         GAME_LOCALSTORAGE = "_DRAGFALL";
         GAME_NAME = "DRAGFALL",
-        GAME_VERSION = "0.1.1";
+        GAME_VERSION = "0.2.1";
         GAME_FOOTER = [ "Drag up-down", "Hit to select", "v"+GAME_VERSION+" by KesieV" ],
         GAME_CREDITS_MUSIC = "track2",
         GAME_GITHUB = "http://github.com/kesiev/dragfall",
@@ -127,6 +128,51 @@ function Game() {
         CREDITS_COLOR = "#FFF",
         CREDITS_COLOR_SHADOW = "#000",
         CREDITS_FONTSIZE = 4,
+        // --- Buttons
+        BUTTON_UP = 0,
+        BUTTON_DOWN = 1,
+        BUTTON_LEFT = 2,
+        BUTTON_RIGHT = 3,
+        BUTTON_DRAG = 4,
+        BUTTON_BACK = 5,
+        BUTTON_START = 6,
+        // --- Keyboard
+        KEY_UP = 38,  KEY_W = 87, KEY_I = 73, KEY_Z = 90,
+        KEY_DOWN = 40, KEY_S = 83, KEY_K = 75,
+        KEY_RIGHT = 39, KEY_D = 68, KEY_L = 76,
+        KEY_LEFT = 37, KEY_A = 65, KEY_J = 74, KEY_Q = 81,
+        KEY_SPACE = 32,
+        KEY_ENTER = 13,
+        KEY_ESC = 27, KEY_1 = 49,
+        // --- GAMEPAD
+        GAMEPAD = [
+            {
+                button:BUTTON_UP,
+                gamePadButtons:[ 12 ],
+                gamePadAxisLesser:1
+            },{
+                button:BUTTON_DOWN,
+                gamePadButtons:[ 13 ],
+                gamePadAxisGreater:1
+            },{
+                button:BUTTON_LEFT,
+                gamePadButtons:[ 14 ],
+                gamePadAxisLesser:0
+            },{
+                button:BUTTON_RIGHT,
+                gamePadButtons:[ 15 ],
+                gamePadAxisGreater:0
+            },{
+                button:BUTTON_DRAG,
+                gamePadButtons:[ 0, 1, 2 ],
+            },{
+                button:BUTTON_BACK,
+                gamePadButtons:[ 8, 9 ],
+            },{
+                button:BUTTON_START,
+                gamePadButtons:[ 3 ],
+            }
+        ],
         // --- Game states
         GAMESTATE_LOADING = 0,
         GAMESTATE_TITLE = 1,
@@ -149,6 +195,12 @@ function Game() {
         ROWTEXT_DELAY = 100,
         SHAKEDURATION_X = 100,
         SHAKEDURATION_Y = 100,
+        // --- Cursor
+        CURSOR_SHADOW = "#000",
+        CURSOR_SIZE = 2,
+        CURSOR_PULSE = 1,
+        CURSOR_PULSENORMAL = 0.005,
+        CURSOR_PULSEDRAG = 0.025,
         // --- Particles
         PARTICLE_DURATION = 1000,
         PARTICLE_DURATION_FAST = 250,
@@ -173,7 +225,7 @@ function Game() {
         // --- Audio
         audio, nextMusic,
         // --- Time calculation & scheduler
-        timeStartE, gameE = 0, lastE = 0,
+        timeStartE, gameE = 0, playE = 0, lastE = 0, isPlayNotPaused = true,
         scheduler = [],
         // --- Game state
         gameState = GAMESTATE_LOADING,
@@ -190,7 +242,9 @@ function Game() {
         cellWidth, cellHeight, hCellWidth, hCellHeight,
         innerCellWidth, innerCellHeight,
         sparkleX, sparkleY, sparkleWidth, sparkleHeight,
-        field, fieldWidth, fieldHeight,
+        field, fieldWidth, fieldHeight, lowestLine,
+        // --- All clear
+        isAllClearTest, allClearAutoDrop, allClearAutoDropAmount,
         // --- Loading
         loadingTotal, loadingLoaded, loadingX, loadingY,
         // --- Lines removal
@@ -201,6 +255,12 @@ function Game() {
         movingOrigin,
         movingBlockStart,
         shadowBlock,
+        // --- Gamepad controls
+        useGamepads = false, gamepadPressedMode, gamepadButtons = [],
+        // --- Keyboard controls
+        isButtonMode = false,
+        isPointerMode = false,
+        cursorX, cursorY, cursorSize, cursorPulse, cursorColor, cursorColorDrag,
         // --- Field effects
         fieldEffects,
         overFieldEffects,
@@ -269,6 +329,7 @@ function Game() {
         menuFontSize, menuFont, menuPadding, menuLineSpacing,
         menuX, menuY, menuWidth, menuHeight,
         menuDragSize, menuDragY, menuDragE, menuMaySelect,
+        wheelTimestamp = 0,
         defaultMenuEffect = ()=>{ audio.playAudio(audio.audio.step); },
         // --- Credits
         credits, creditsFont, creditsLineHeight, creditsOptionBack,
@@ -356,6 +417,23 @@ function Game() {
         ];
     }
 
+    // --- Credits
+
+    function endCredits() {
+        credits = 0;
+        audio.mixerStopMusic();
+        gotoOptions(creditsOptionBack);
+    }
+
+    // --- Run
+
+    function endRun() {
+        if (!isTransitionState) {
+            audio.playAudio(audio.audio.step);
+            gotoGameState(GAMESTATE_TITLE);
+        }
+    }
+
     // --- Menus
 
     function gotoPause() {
@@ -368,6 +446,7 @@ function Game() {
             currentMenu = new Menu([
                 {
                     label:[ "Continue" ],
+                    isBackOption:true,
                     onSelect:(menu)=>{
                         audio.replayMusic();
                         currentMenu = 0;
@@ -379,6 +458,7 @@ function Game() {
                         currentMenu = new Menu([
                             {
                                 label:[ "Keep playing" ],
+                                isBackOption:true,
                                 onSelect:(menu)=>{
                                     gotoPause();
                                 }
@@ -539,6 +619,7 @@ function Game() {
                         }
                     },{
                         label:[ "BACK" ],
+                        isBackOption:true,
                         onSelect:(menu)=>{
                             audio.playAudio(audio.audio.fall);
                             gotoOptions(prevOption);
@@ -550,6 +631,7 @@ function Game() {
 
         options.push({
             label:[ "BACK" ],
+            isBackOption:true,
             onSelect:(menu, option)=>{
                 audio.playAudio(audio.audio.fall);
                 gotoMainMenu();
@@ -636,9 +718,17 @@ function Game() {
         
         lastE = e;
 
+        updateControls();
+
         if (isNotPaused && e) {
-            if (timeStartE)
-                gameE += (e-timeStartE);
+            
+            if (timeStartE) {
+                let
+                    delta = e-timeStartE;
+                gameE += delta;
+                if (isPlayNotPaused)
+                    playE += delta;
+            }
             timeStartE = e;
             runSchedules();
         }
@@ -691,7 +781,9 @@ function Game() {
                     opacity = Math.sin(gameE*0.01)*0.1,
                     warningWave = Math.floor(Math.sin(gameE*0.01)*cellHeight*0.1),
                     shakeX = 0,
-                    shakeY = 0;
+                    shakeY = 0,
+                    timePassed,
+                    timeRatio;
 
                 if (gameE > shakeXEnd)
                     shakeXEnd = 0;
@@ -778,138 +870,147 @@ function Game() {
                     ctx.fillRect(gameoverX,gameoverY,gameoverWidth,gameoverHeight);
                     ctx.fillStyle = ctx.shadowColor = paletteToRGBA(gameoverColor, gameoverProgress)
                     ctx.fillRect(gameoverInnerX,gameoverInnerY,gameoverInnerWidth,gameoverInnerHeight);
+                } else if (isButtonMode) {
+                    let
+                        isDrag = state == 1,
+                        gap = cursorPulse*Math.sin(gameE * (isDrag ? CURSOR_PULSEDRAG : CURSOR_PULSENORMAL)),
+                        width = cellWidth+(gap*2),
+                        height = cellHeight+(gap*2);
+
+                    ctx.strokeStyle = isDrag ? cursorColorDrag : cursorColor;
+                    ctx.shadowColor = CURSOR_SHADOW;
+                    ctx.lineWidth = cursorSize;
+                    ctx.strokeRect(gridX + cursorX * cellWidth - gap, gridY + cursorY * cellHeight - gap, width, height);
                 }
 
-                if (nextBlockStart) {
+                timePassed = playE - nextBlockStart;
+                timeRatio = 1-(timePassed/timeLimit);
+
+                // --- Render bar
+                if (timePassed < timeLimit) {
                     let
-                        timePassed = gameE - nextBlockStart,
-                        timeRatio = 1-(timePassed/timeLimit);
+                        color;
 
-                    // --- Render bar
-                    if (timePassed < timeLimit) {
-                        let
-                            color;
-
-                        if (normalMode) {
-                            if (timeLimitIsFall)
-                                color = paletteToRGBA(timebarColorCritical,(0.7+Math.sin(timePassed/timeRatio*0.002)*0.3));
-                            else
-                                color = paletteToRGBA(timebarColor, (0.1+(timeRatio*0.9)));
-                        } else if (survivalMode) {
+                    if (normalMode) {
+                        if (timeLimitIsFall)
                             color = paletteToRGBA(timebarColorCritical,(0.7+Math.sin(timePassed/timeRatio*0.002)*0.3));
-                        } else if (vsYouMode) {
-                            if (garbageTugOfWar > 0)
-                                color = paletteToRGBA(timebarColorCritical,(0.7+Math.sin(timePassed/timeRatio*0.002)*0.3));
-                            else
-                                color = paletteToRGBA(timebarColor, (0.1+(timeRatio*0.9)));
-                        }
-
-                        ctx.fillStyle = ctx.shadowColor = color;
-                        ctx.fillRect(timebarX,timebarY,Math.floor(timebarWidth*timeRatio),timebarHeight);
-                    } else {
-
-                        // --- Manages autodrop
-                        if (timeLimitIsFall && !schedulePlayerDrop) {
-                            nextBlockStart = 0;
-                            if (survivalMode) {
-                                newLevel(true, true);
-                                checkProgress(true, false);
-                                autoPlayerDrop();
-                            } else if (vsYouMode) {
-                                if (incomingGarbage) {
-                                    vsYouGarbageGivenTotal+=incomingGarbage;
-                                    // --- Spawn garbage
-                                    setScoreComment(true, incomingGarbage+" garbage");
-                                    // --- First garbage is autodrop, the rest is true garbage
-                                    if (incomingGarbage > 1) {
-                                        autodropEnded = 0;
-                                        isAutodropGarbage = true;
-                                        autoDrops = incomingGarbage-1;
-                                        autoDropAmount = garbageAutoDropAmount;
-                                    } else {
-                                        autodropEnded = 2;
-                                    }
-                                    autoPlayerDrop();
-                                } else {
-                                    // --- New time window
-                                    nextBlockStart = gameE;
-                                    autodropEnded = 2;
-                                }
-                                garbageTugOfWar = 0;
-                                incomingGarbage = 0;
-                                vsYouCurrentRecording++;
-                                if (vsYouCurrentRecording >= vsYouRecordingLength) {
-                                    let
-                                        newLevelSound = true;
-
-                                    vsYouCurrentRecording = 0;
-                                    vsYouGarbageTrackStart = gameE;
-                                    if (vsYouRecordGarbage == 0) {
-                                        // --- Punish bad play
-                                        vsYouGarbageTrack = [];
-                                        vsYouPunishmentTrack.forEach((garbage)=>{
-                                            vsYouGarbageTrack.push(garbage);
-                                        })
-                                        setScoreComment(true, "PUNISHMENT!");
-                                        audio.playAudio(audio.audio.gameover);
-                                    } else {
-                                        // --- Perfect bonus
-                                        if (!vsYouGarbageGivenTotal && vsYouGarbageTrackTotal) {
-                                            addScore(level * vsYouGarbageTrackTotal * 5);
-                                            commitScore();
-                                            setScoreComment(true, "PERFECT!");
-                                            audio.playAudio(audio.audio.perfect);
-                                            newLevelSound = false;
-                                        }
-                                        // --- Play last recording
-                                        vsYouGarbageTrack = vsYouRecord;
-                                    }
-                                    vsYouRecord = [];
-                                    vsYouRecordStart = gameE;
-                                    vsYouRecordGarbage = 0;
-                                    vsYouGarbageTrackTotal = 0;
-                                    vsYouGarbageGivenTotal = 0;
-                                    // --- Change background
-                                    vsYouTurn = (vsYouTurn + 1) % 2;
-                                    runEvent(vsYouTransitions[vsYouTurn]);
-                                    // --- New level
-                                    newLevel(false, newLevelSound);
-                                    checkProgress(true, false);
-                                } else {
-                                    audio.playAudio(audio.audio.step, false, 0, 1.5);
-                                }
-                            } else {
-                                autoPlayerDrop();
-                            }
-                        }
-
+                        else
+                            color = paletteToRGBA(timebarColor, (0.1+(timeRatio*0.9)));
+                    } else if (survivalMode) {
+                        color = paletteToRGBA(timebarColorCritical,(0.7+Math.sin(timePassed/timeRatio*0.002)*0.3));
+                    } else if (vsYouMode) {
+                        if (garbageTugOfWar > 0)
+                            color = paletteToRGBA(timebarColorCritical,(0.7+Math.sin(timePassed/timeRatio*0.002)*0.3));
+                        else
+                            color = paletteToRGBA(timebarColor, (0.1+(timeRatio*0.9)));
                     }
 
-                    // --- Manage garbage
-                    if (vsYouGarbageTrack) {
+                    ctx.fillStyle = ctx.shadowColor = color;
+                    ctx.fillRect(timebarX,timebarY,Math.floor(timebarWidth*timeRatio),timebarHeight);
+                } else {
+
+                    // --- Manages autodrop
+                    if (timeLimitIsFall && !schedulePlayerDrop) {
+                        if (survivalMode) {
+                            nextBlockStart = playE;
+                            newLevel(true, true);
+                            checkProgress(true, false);
+                            autoPlayerDrop();
+                        } else if (vsYouMode) {
+                            if (incomingGarbage) {
+                                vsYouGarbageGivenTotal+=incomingGarbage;
+                                // --- Spawn garbage
+                                setScoreComment(true, incomingGarbage+" garbage");
+                                // --- First garbage is autodrop, the rest is true garbage
+                                if (incomingGarbage > 1) {
+                                    autodropEnded = 0;
+                                    isAutodropGarbage = true;
+                                    autoDrops = incomingGarbage-1;
+                                    autoDropAmount = garbageAutoDropAmount;
+                                } else {
+                                    autodropEnded = 2;
+                                }
+                                autoPlayerDrop();
+                            } else {
+                                // --- New time window
+                                nextBlockStart = playE;
+                                autodropEnded = 2;
+                            }
+                            garbageTugOfWar = 0;
+                            incomingGarbage = 0;
+                            vsYouCurrentRecording++;
+                            if (vsYouCurrentRecording >= vsYouRecordingLength) {
+                                let
+                                    newLevelSound = true;
+
+                                vsYouCurrentRecording = 0;
+                                vsYouGarbageTrackStart = playE;
+                                if (vsYouRecordGarbage == 0) {
+                                    // --- Punish bad play
+                                    vsYouGarbageTrack = [];
+                                    vsYouPunishmentTrack.forEach((garbage)=>{
+                                        vsYouGarbageTrack.push(garbage);
+                                    })
+                                    setScoreComment(true, "PUNISHMENT!");
+                                    audio.playAudio(audio.audio.gameover);
+                                } else {
+                                    // --- Perfect bonus
+                                    if (!vsYouGarbageGivenTotal && vsYouGarbageTrackTotal) {
+                                        addScore(level * vsYouGarbageTrackTotal * Math.ceil(field.width/2));
+                                        commitScore();
+                                        setScoreComment(true, "PERFECT!");
+                                        audio.playAudio(audio.audio.perfect);
+                                        newLevelSound = false;
+                                    }
+                                    // --- Play last recording
+                                    vsYouGarbageTrack = vsYouRecord;
+                                }
+                                vsYouRecord = [];
+                                vsYouRecordStart = playE;
+                                vsYouRecordGarbage = 0;
+                                vsYouGarbageTrackTotal = 0;
+                                vsYouGarbageGivenTotal = 0;
+                                // --- Change background
+                                vsYouTurn = (vsYouTurn + 1) % 2;
+                                runEvent(vsYouTransitions[vsYouTurn]);
+                                // --- New level
+                                newLevel(false, newLevelSound);
+                                checkProgress(true, false);
+                            } else {
+                                audio.playAudio(audio.audio.step, false, 0, 1.5);
+                            }
+                        } else {
+                            nextBlockStart = playE;
+                            autoPlayerDrop();
+                        }
+                    }
+
+                }
+
+                // --- Manage garbage
+                if (vsYouGarbageTrack) {
+                    let
+                        addedGarbage = 0,
+                        pos = playE - vsYouGarbageTrackStart;
+
+                    for (let i=0;i<vsYouGarbageTrack.length;i++) {
                         let
-                            addedGarbage = 0,
-                            pos = gameE - vsYouGarbageTrackStart;
+                            entry = vsYouGarbageTrack[i];
+                        if (entry[0]<=pos) {
+                            addedGarbage += entry[1];
+                            vsYouGarbageTrackTotal += entry[1];
+                            vsYouGarbageTrack.splice(i,1);
+                            i--;
+                        } else
+                            break;
+                    }
 
-                        for (let i=0;i<vsYouGarbageTrack.length;i++) {
-                            let
-                                entry = vsYouGarbageTrack[i];
-                            if (entry[0]<=pos) {
-                                addedGarbage += entry[1];
-                                vsYouGarbageTrackTotal += entry[1];
-                                vsYouGarbageTrack.splice(i,1);
-                                i--;
-                            } else
-                                break;
-                        }
-
-                        if (addedGarbage) {
-                            garbageTugOfWar += addedGarbage;
-                            incomingGarbage = Math.max(0, Math.min(garbageLimit, garbageTugOfWar));
-                            showDeltaScore("+"+addedGarbage+" garbage");
-                            if (incomingGarbage > 0)
-                                audio.playAudio(audio.audio.garbage);
-                        }
+                    if (addedGarbage) {
+                        garbageTugOfWar += addedGarbage;
+                        incomingGarbage = Math.max(0, Math.min(garbageLimit, garbageTugOfWar));
+                        showDeltaScore("+"+addedGarbage+" garbage");
+                        if (incomingGarbage > 0)
+                            audio.playAudio(audio.audio.garbage);
                     }
                 }
 
@@ -1044,6 +1145,7 @@ function Game() {
         else
             seed = 1+Math.floor(Math.random()*SEEDS);
         field = new Field(mode.initialize.fieldWidth, mode.initialize.fieldHeight);
+        lowestLine = field.height-1;
         next = new Next(LOGICCOLORS, seed);
         next.setAmount(mode.initialize.setBlocksPerDrop);
         next.setBlocks(mode.initialize.blocks);
@@ -1092,6 +1194,10 @@ function Game() {
         vsYouRecordingLength = mode.initialize.vsYouRecordingLength;
         vsYouPunishmentTrack = mode.initialize.vsYouPunishmentTrack;
         garbageLimit = mode.initialize.setGarbageLimit;
+        allClearAutoDrop = mode.initialize.allClearAutoDrop;
+        allClearAutoDropAmount = mode.initialize.allClearAutoDropAmount;
+        cursorColor = mode.initialize.cursorColor;
+        cursorColorDrag = mode.initialize.cursorColorDrag;
         setPalette(mode.initialize.palette);
 
         if (mode.initialize.setBackgroundAnimation !== null) {
@@ -1107,6 +1213,8 @@ function Game() {
         lines = 0;
         combo = 0;
         score = 0;
+        playE = 0;
+        gameE = 0;
         deltaScore = 0;
         shakeXEnd = 0;
         shakeYEnd = 0;
@@ -1126,11 +1234,15 @@ function Game() {
         vsYouGarbageTrackStart = 0;
         vsYouGarbageTrackTotal = 0;
         vsYouGarbageGivenTotal = 0;
+        isPlayNotPaused = false;
         vsYouTurn = 0;
         linesPerLevel = mode.initialize.linesPerLevel;
         linesToNextLevel = linesPerLevel;
-        isAutodropGarbage = false,
-        schedulePlayerDrop = false,
+        isAutodropGarbage = false;
+        schedulePlayerDrop = false;
+        isAllClearTest = false;
+        cursorX = Math.floor(field.width/2);
+        cursorY = lowestLine - 2;
         mode.progress.forEach((_,id)=>{
             progress[id] = { lines:0, random:new Random(seed+id) };
         })
@@ -1149,7 +1261,7 @@ function Game() {
         audio.stopMusic();
         isInteractive = false;
         isWarning = false;
-        nextBlockStart = 0;
+        isPlayNotPaused = false;
         resetScheduler();
     }
 
@@ -1351,6 +1463,10 @@ function Game() {
             gameoverWidth = canvasWidth;
             gameoverTextX = Math.floor(canvasWidth/2);
 
+            // --- Cursor
+            cursorSize = pixelSize * CURSOR_SIZE;
+            cursorPulse = pixelSize * CURSOR_PULSE;
+
             // --- Screen shake
             shakeXStart = Math.min(-1,-1*pixelSize);
             shakeXDelta = Math.max(2,pixelSize*2);
@@ -1476,7 +1592,7 @@ function Game() {
     function playerDrop(force) {
         if (movingBlock) {
             let
-                timePassed = gameE - nextBlockStart,
+                timePassed = playE - nextBlockStart,
                 isValidMove = movingBlock.x != movingBlockStart;
 
             if (normalMode && (timePassed < timeLimit) && isValidMove)
@@ -1604,8 +1720,10 @@ function Game() {
 
     function gameTurn() {
         isInteractive = false;
+        isPlayNotPaused = false;
+
         if (normalMode)
-            nextBlockStart = 0;
+            nextBlockStart = playE;
 
         let
             movedCells = field.applyGravity();
@@ -1720,22 +1838,25 @@ function Game() {
                 if (vsYouMode && (combo > 1)) {
                     let
                         power = combo - 1;
-                    vsYouRecord.push([ gameE-vsYouRecordStart, power ]);
+                    vsYouRecord.push([ playE-vsYouRecordStart, power ]);
                     garbageTugOfWar -= power;
                     vsYouRecordGarbage += power;
                     incomingGarbage = Math.max(0, Math.min(garbageLimit, garbageTugOfWar));
                 }
                 combo = 0;
                 isGameOver = false;
-                if (survivalMode || vsYouMode) {
+                // --- Timer management
+                if (vsYouMode) {
+                    // Timer is fully managaged by the timer itself
+                } else if (survivalMode) {
                     if (autoDrops)
-                        nextBlockStart = 0;
+                        nextBlockStart = playE;
                     else if (autodropEnded == 2) {
                         autodropEnded = 3;
-                        nextBlockStart = gameE;
+                        nextBlockStart = playE;
                     }
                 } else
-                    nextBlockStart = autoDrops ? 0 : gameE;
+                    nextBlockStart = autoDrops ? 0 : playE;
                 // --- Check warning bar and endgame
                 isWarning = false;
                 for (let y=0;y<warningRows;y++)
@@ -1767,12 +1888,38 @@ function Game() {
                         schedulePlayerDrop = false;
                         playerDrop(true);
                     } else {
-                        isInteractive = true;
+                        if (isAllClearTest) {
+                            let
+                                isAllClear = isAllClearTest;
+                            // --- Check for an all-clear
+                            for (let x=0;x<field.width;x++)
+                                if (field.isFieldFilled(x,lowestLine)) {
+                                    isAllClear = false;
+                                    break;
+                                }
+                            if (isAllClear) {
+                                setScoreComment(false, "ALL CLEAR!");
+                                audio.playAudio(audio.audio.perfect);
+                                addScore(level * field.width * 3);
+                                autodropEnded = 0;
+                                autoDrops = allClearAutoDrop;
+                                autoDropAmount = allClearAutoDropAmount;
+                                isAllClearTest = false;
+                                schedule(gameTurn,10);
+                            } else {
+                                isPlayNotPaused = true;
+                                isInteractive = true;
+                            }
+                        } else {
+                            isPlayNotPaused = true;
+                            isInteractive = true;
+                            isAllClearTest = true;
+                        }
                     }
                     if (autodropEnded == 1) {
                         autodropEnded = 2;
                         if (gameStarting) {
-                            vsYouRecordStart = gameE;
+                            vsYouRecordStart = playE;
                             vsYouRecordGarbage = 0;
                             gameStarting = false;
                             setScoreComment(true, introText);
@@ -1784,7 +1931,151 @@ function Game() {
         }
     }
 
-    // --- DOM events
+    // --- Button controls
+
+    function onButton(updown, button) {
+        if (updown) {
+            if (currentMenu) {
+                switch (button) {
+                    case BUTTON_UP: {
+                        menuDragE = 0;
+                        if (currentMenu.moveUp(true))
+                            menuMaySelect = false;
+                        break;
+                    }
+                    case BUTTON_DOWN: {
+                        menuDragE = 0;
+                        if (currentMenu.moveDown(true))
+                            menuMaySelect = false;
+                        break;
+                    }
+                    case BUTTON_BACK:{
+                        menuDragE = 0;
+                        if (currentMenu.back())
+                            menuMaySelect = false;
+                        break;
+                    }
+                    case BUTTON_START:
+                    case BUTTON_DRAG:{
+                        if (currentMenu)
+                            currentMenu.select();
+                        menuDragE = 0;
+                        break;
+                    }
+                }
+            } else if (credits) {
+                switch (button) {
+                    case BUTTON_START:
+                    case BUTTON_DRAG:
+                    case BUTTON_BACK: {
+                        endCredits();
+                        break;
+                    }
+                }
+            } else if (isGameOver && (gameE > enableHitAt) && (button == BUTTON_START || button == BUTTON_BACK)) {
+                endRun();
+            } else if (gameState === GAMESTATE_PLAY) {
+                if ((state == 1) && isPointerMode) {
+                    playerDrop();
+                } else if (!isGameOver && (button == BUTTON_BACK) )
+                    gotoPause(); 
+                else {
+                    let
+                        moved;
+
+                    switch (button) {
+                        case BUTTON_UP:{
+                            if (state != 1) {
+                                cursorY--;
+                                if (cursorY<0)
+                                    cursorY = field.height-1;
+                            }
+                            break;
+                        }
+                        case BUTTON_DOWN:{
+                            if (state != 1) {
+                                cursorY++;
+                                if (cursorY>=field.height)
+                                    cursorY = 0;
+                            }
+                            break;
+                        }
+                        case BUTTON_LEFT:{
+                            if (state == 1) {
+                                if (isInteractive) {
+                                    // --- Drag block
+                                    if (movingBlock.fitsInField(field, -1, 0)) {
+                                        cursorX--;
+                                        movingBlock.x--;
+                                        moved = true;
+                                    }
+                                }
+                            } else {
+                                // --- Move cursor
+                                cursorX--;
+                                if (cursorX<0)
+                                    cursorX = field.width-1;
+                            }
+                            break;
+                        }
+                        case BUTTON_RIGHT:{
+                            if (state == 1) {
+                                if (isInteractive) {
+                                    // --- Drag block
+                                    if (movingBlock.fitsInField(field, 1, 0)) {
+                                        cursorX++;
+                                        movingBlock.x++;
+                                        moved = true;
+                                    }
+                                }
+                            } else {
+                                // --- Move cursor
+                                cursorX++;
+                                if (cursorX>=field.width)
+                                    cursorX = 0;
+                            }
+                            break;
+                        }
+                        case BUTTON_DRAG:{
+                            if (isInteractive && (state == 0)) {
+                                let
+                                    selectedCell = field.getCell(cursorX, cursorY);
+                                if (selectedCell) {
+                                    if (selectedCell.unmovable) {
+                                        let
+                                            selectedArea = field.extractBlockAreaAt(cursorX, cursorY);
+                                        selectedArea.cells.forEach(cell=>{
+                                            overFieldEffects.addHilight(true, cell.x, cell.y, 400, DENIED_COLOR.r, DENIED_COLOR.g, DENIED_COLOR.b, 20);
+                                        })
+                                        audio.playAudio(audio.audio.blocked);
+                                    } else {
+                                        // --- Drag and move
+                                        movingBlock = field.extractBlockAt(cursorX, cursorY);
+                                        shadowBlock = movingBlock.clone();
+                                        movingOrigin = cursorX;
+                                        movingBlockStart = movingBlock.x;
+                                        state = 1;
+                                    }
+                                }
+                            }
+                            break;
+                        }
+                    }
+
+                    if (moved)
+                        audio.playAudio(audio.audio.step);
+                }
+            }
+        } else {
+            if (!menuDragE && (state == 1) && (button == BUTTON_DRAG)) {
+                playerDrop();
+            }
+        }
+        isButtonMode = true;
+        isPointerMode = false;
+    }
+
+    // --- Controls: Mouse/touch
 
     canvas.onpointerdown = (e)=>{
         let
@@ -1799,111 +2090,119 @@ function Game() {
             menuDragY = pointerY;
             menuDragE = gameE;
         } else if (credits) {
-            credits = 0;
-            audio.mixerStopMusic();
-            gotoOptions(creditsOptionBack);
+            endCredits();
         } else if (gameState === GAMESTATE_PLAY) {
             if (!isGameOver && ((pointerX < boardX) || (pointerX > boardRight) || (pointerY < boardY) || (pointerY > footerbarInnerY)))
                 gotoPause(); 
             else if (isInteractive) {
-                let
-                    cellX = Math.floor((pointerX-gridX)/cellWidth),
-                    cellY = Math.floor((pointerY-gridY)/cellHeight);
+                if ((state == 1) && isButtonMode) {
+                    playerDrop();
+                } else {
+                    let
+                        cellX = Math.floor((pointerX-gridX)/cellWidth),
+                        cellY = Math.floor((pointerY-gridY)/cellHeight);
 
-                if (field.isInField(cellX, cellY)) {
+                    if (field.isInField(cellX, cellY)) {
 
-                    switch (state) {
-                        case 0:{
-                            let
-                                selectedCell = field.getCell(cellX, cellY);
+                        switch (state) {
+                            case 0:{
+                                let
+                                    selectedCell = field.getCell(cellX, cellY);
 
-                            if (selectedCell) {
-                                if (selectedCell.unmovable) {
-                                    let
-                                        selectedArea = field.extractBlockAreaAt(cellX, cellY);
-                                    selectedArea.cells.forEach(cell=>{
-                                        overFieldEffects.addHilight(true, cell.x, cell.y, 400, DENIED_COLOR.r, DENIED_COLOR.g, DENIED_COLOR.b, 20);
-                                    })
-                                    audio.playAudio(audio.audio.blocked);
-                                } else {
-                                    // --- Drag and move
-                                    movingBlock = field.extractBlockAt(cellX, cellY);
-                                    shadowBlock = movingBlock.clone();
-                                    movingOrigin = cellX;
-                                    movingBlockStart = movingBlock.x;
-                                    state = 1;
+                                if (selectedCell) {
+                                    if (selectedCell.unmovable) {
+                                        let
+                                            selectedArea = field.extractBlockAreaAt(cellX, cellY);
+                                        selectedArea.cells.forEach(cell=>{
+                                            overFieldEffects.addHilight(true, cell.x, cell.y, 400, DENIED_COLOR.r, DENIED_COLOR.g, DENIED_COLOR.b, 20);
+                                        })
+                                        audio.playAudio(audio.audio.blocked);
+                                    } else {
+                                        // --- Drag and move
+                                        movingBlock = field.extractBlockAt(cellX, cellY);
+                                        shadowBlock = movingBlock.clone();
+                                        movingOrigin = cellX;
+                                        movingBlockStart = movingBlock.x;
+                                        state = 1;
+                                    }
+                                }  else if (DEBUG) {
+                                    field.addBlock(
+                                        new Block(cellX, cellY, 0, 0, false, false, false, [ [ 1 ] ] )
+                                    );
                                 }
+                                break;
                             }
-                            break;
                         }
                     }
                 }
-            } else if (isGameOver && (gameE > enableHitAt)) {
-                audio.playAudio(audio.audio.step);
-                gotoGameState(GAMESTATE_TITLE);
-            }
+            } else if (isGameOver && (gameE > enableHitAt))
+               endRun();
         }
+        isButtonMode = false;
+        isPointerMode = true;
         e.preventDefault();
         return false;
     }
 
     canvas.onpointermove = (e)=>{
-        let
-            pointerX = e.clientX / SCALE,
-            pointerY = e.clientY / SCALE;
+        if (isPointerMode) {
+            let
+                pointerX = e.clientX / SCALE,
+                pointerY = e.clientY / SCALE;
 
-        if (menuDragE) {
-            if (currentMenu) {
-                let
-                    side = menuDragY - pointerY;
+            if (menuDragE) {
+                if (currentMenu) {
+                    let
+                        side = menuDragY - pointerY;
 
-                if (side > menuDragSize) {
-                    if (currentMenu.moveDown()) {
-                        menuMaySelect = false;
-                        menuDragY = pointerY;
-                    }
-                } else if (side < -menuDragSize) {
-                    if (currentMenu.moveUp()) {
-                        menuMaySelect = false;
-                        menuDragY = pointerY;
+                    if (side > menuDragSize) {
+                        if (currentMenu.moveDown()) {
+                            menuMaySelect = false;
+                            menuDragY = pointerY;
+                        }
+                    } else if (side < -menuDragSize) {
+                        if (currentMenu.moveUp()) {
+                            menuMaySelect = false;
+                            menuDragY = pointerY;
+                        }
                     }
                 }
-            }
-        } else if (isInteractive) {
-            let
-                cellX = Math.floor((pointerX-gridX)/cellWidth),
-                cellY = Math.floor((pointerY-gridY)/cellHeight);
+            } else if (isInteractive) {
+                let
+                    cellX = Math.floor((pointerX-gridX)/cellWidth),
+                    cellY = Math.floor((pointerY-gridY)/cellHeight);
 
-            if (field.isInFieldX(cellX)) {
-                switch (state) {
-                    case 1:{
-                        // Moving block
-                        let
-                            moved = false;
+                if (field.isInFieldX(cellX)) {
+                    switch (state) {
+                        case 1:{
+                            // Moving block
+                            let
+                                moved = false;
 
-                        if (cellX != movingOrigin) {
-                            do {
-                                if (cellX > movingOrigin) {
-                                    if (movingBlock.fitsInField(field, 1, 0)) {
-                                        movingBlock.x++;
-                                        movingOrigin++;
-                                        moved = true;
-                                    } else
-                                        break;
-                                } else if (cellX < movingOrigin) {
-                                    if (movingBlock.fitsInField(field, -1, 0)) {
-                                        movingBlock.x--;
-                                        movingOrigin--;
-                                        moved = true;
-                                    } else
-                                        break;
-                                }
-                            } while (cellX != movingOrigin)
+                            if (cellX != movingOrigin) {
+                                do {
+                                    if (cellX > movingOrigin) {
+                                        if (movingBlock.fitsInField(field, 1, 0)) {
+                                            movingBlock.x++;
+                                            movingOrigin++;
+                                            moved = true;
+                                        } else
+                                            break;
+                                    } else if (cellX < movingOrigin) {
+                                        if (movingBlock.fitsInField(field, -1, 0)) {
+                                            movingBlock.x--;
+                                            movingOrigin--;
+                                            moved = true;
+                                        } else
+                                            break;
+                                    }
+                                } while (cellX != movingOrigin)
+                            }
+
+                            if (moved)
+                                audio.playAudio(audio.audio.step);
+                            break;
                         }
-
-                        if (moved)
-                            audio.playAudio(audio.audio.step);
-                        break;
                     }
                 }
             }
@@ -1929,6 +2228,141 @@ function Game() {
         e.preventDefault();
         return false;
     }
+
+    // --- Controls: Gamepad
+    
+    function gamePadButtonIsPressed (b) {
+		if (gamepadPressedMode) return b?Math.abs(b.value)>0.7:0;
+		else return b==1.0;
+	}
+    
+    function updateControls() {
+        if (useGamepads) {
+            let
+                gamepads = DEVICE.getGamepads();
+
+            gamepads.forEach(gamepad=>{
+                if (gamepad) {
+                    GAMEPAD.forEach((control,id)=>{
+                        let
+                            isPressed = false;
+
+                        if (control.gamePadButtons)
+                            for (let i=0;i<control.gamePadButtons.length;i++)
+                                if (gamePadButtonIsPressed(gamepad.buttons[control.gamePadButtons[i]]))
+                                    isPressed |= true;
+
+                        if (gamepad.axes) {
+                            if ((control.gamePadAxisGreater !== undefined) && gamepad.axes[control.gamePadAxisGreater])
+                                isPressed |= gamepad.axes[control.gamePadAxisGreater] > 0.7;
+                            else if ((control.gamePadAxisLesser !== undefined) && gamepad.axes[control.gamePadAxisLesser])
+                                isPressed |= gamepad.axes[control.gamePadAxisLesser] < -0.7;
+                        }
+
+
+                        if (isPressed != gamepadButtons[id]) {
+                            gamepadButtons[id] = isPressed;
+                            onButton(isPressed, control.button);
+                        }
+                    })
+                }
+            })
+        }
+    }
+
+     window.addEventListener("gamepadconnected", (e) => {
+        useGamepads = true;
+        if (e.gamepad.buttons[0]) gamepadPressedMode=typeof e.gamepad.buttons[0]=="object";
+    });
+
+    // --- Controls: Keyboard
+    
+    function onKeyCode(updown, code) {
+        switch (code) {
+            case KEY_UP:
+            case KEY_W:
+            case KEY_I:
+            case KEY_Z: {
+                onButton(updown, BUTTON_UP);
+                break;
+            }
+            case KEY_DOWN:
+            case KEY_S:
+            case KEY_K: {
+                onButton(updown, BUTTON_DOWN);
+                break;
+            }
+            case KEY_RIGHT:
+            case KEY_D:
+            case KEY_L: {
+                onButton(updown, BUTTON_RIGHT);
+                break;
+            }
+            case KEY_LEFT:
+            case KEY_A:
+            case KEY_J:
+            case KEY_Q: {
+                onButton(updown, BUTTON_LEFT);
+                break;
+            }
+            case KEY_SPACE:{
+                onButton(updown, BUTTON_DRAG);
+                break;
+            }
+            case KEY_ENTER:{
+                onButton(updown, BUTTON_START);
+                break;
+            }
+            case KEY_ESC:
+            case KEY_1:{
+                onButton(updown, BUTTON_BACK);
+                break;
+            }
+        }
+    }
+
+    document.onkeydown = (e) => {
+        audio.audioInitialize();
+        if (settings.fullscreen)
+            setFullScreen();
+
+        onKeyCode(true, e.keyCode);
+       
+        e.preventDefault();
+    }
+
+    document.onkeyup = (e) => {
+        audio.audioInitialize();
+        if (settings.fullscreen)
+            setFullScreen();
+
+        onKeyCode(false, e.keyCode);
+       
+        e.preventDefault();
+    }
+
+    // --- Controls: Mouse
+
+    canvas.onwheel = (e)=> {
+        if (currentMenu) {
+            let
+                delta=e.timeStamp-wheelTimestamp;
+            if (delta>100) {
+                if (e.deltaY>0) {
+                    menuDragE = 0;
+                    if (currentMenu.moveDown())
+                        menuMaySelect = false;
+                } else if (e.deltaY<0) {
+                    menuDragE = 0;
+                    if (currentMenu.moveUp())
+                        menuMaySelect = false;
+                }
+            }
+            wheelTimestamp=e.timeStamp;
+        }
+    }
+
+    // ---  DOM events: Resize
 
     window.onresize = ()=>{
         resize(5);
@@ -2002,7 +2436,8 @@ function Game() {
 
     self = {
         run:()=>{
-            // --- Initialize DOM
+            // --- Initialize
+            DEVICE.initialize();
             canvas.style.backgroundColor = "#000";
             document.body.appendChild(canvas);
 

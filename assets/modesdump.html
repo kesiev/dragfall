@@ -32,6 +32,10 @@
         return "<div style='display:inline-block;border:3px solid "+border+";background-color:"+bg+";padding:3px;color:"+fg+"'><tt>SAMPLE</tt></div>";
     }
 
+    function createCursorSample(border, shadow) {
+        return "<div style='display:inline-block;width:8px;height:8px;background-color:#000;border:3px solid "+border+";box-shadow:0 0 5px #000'></div>";
+    }
+
     function dumpPattern(pattern) {
         let
             out="<table style='empty-cells:show;margin:0 5px;display:inline-block' cellpadding=0 cellspacing=0>";
@@ -73,20 +77,6 @@
     function dumpAction(action) {
         let
             out = [];
-/*
-                vsYouTransitions:[
-                    {
-                        setIdleStyle:[ { r:COLOR_OFF, g:COLOR_OFF, b:COLOR_BRIGHT }, { r:COLOR_BRIGHT, g:COLOR_BRIGHT, b:COLOR_BRIGHT }, 0.001, 0, 1, 0.4 ],
-                        setBackgroundAnimation:8
-                    },{
-                        setIdleStyle:[ { r:COLOR_BRIGHT, g:COLOR_OFF, b:COLOR_OFF }, { r:COLOR_BRIGHT, g:COLOR_BRIGHT, b:COLOR_BRIGHT }, -0.001, 0, 1, 0.4 ],
-                        setBackgroundAnimation:9
-                    }
-                ]
-
-
-*/
-
 
         // --- Start
         if (action.survivalMode !== undefined)
@@ -127,6 +117,8 @@
             out.push([ "Level multiplier", "level &times;"+action.levelMultiplierRatio ]);
         if (action.autoDrop !== undefined)
             out.push([ "Autodrop", action.autoDropAmount+" block(s) for "+action.autoDrop+" times ("+(action.autoDrop*action.autoDropAmount)+" block(s))" ]);
+        if (action.allClearAutoDrop !== undefined)
+            out.push([ "All Clear autodrop", action.allClearAutoDropAmount+" block(s) for "+action.allClearAutoDrop+" times ("+(action.allClearAutoDrop*action.allClearAutoDropAmount)+" block(s))" ]);
 
         
         if (action.everyLines !== undefined)
@@ -137,6 +129,8 @@
             out.push([ "Gameover box", createColorSample(createRGB(action.gameoverColorBorder), createRGB(action.gameoverColor), createRGB(action.footerbarColorText)) ]);
         if (action.timebarBasicHeight !== undefined)
             out.push([ "Timebar", action.timebarBasicHeight+"px Basic: "+createColorBox(createRGB(action.timebarColor))+ "/ Critical:"+createColorBox(createRGB(action.timebarColorCritical)) ]);
+        if (action.cursorColor)
+            out.push([ "Cursor color", "Moving: "+createCursorSample(action.cursorColor)+" / Drag: "+createCursorSample(action.cursorColorDrag) ]);
         if (action.lineClearColor !== undefined)
             out.push([ "Line clear color", createColorBox(createRGB(action.lineClearColor)) ]);
         if (action.rowtextColor !== undefined)
