@@ -9,6 +9,24 @@ function Next(colors, seed) {
 
     self = {
         failureLimit:0,
+        serialize:()=>{
+            return [
+                JSON.parse(JSON.stringify(incoming)),
+                random.getSeed(),
+                bag.list ? JSON.parse(JSON.stringify(bag.list)) : 0,
+                randomAmount.getSeed(),
+                amountBag.list ? JSON.parse(JSON.stringify(amountBag.list)) : 0
+            ];
+        },
+        unserialize:(data)=>{
+            incoming = data[0];
+            random.setSeed(data[1]);
+            if (data[2])
+                bag.list = data[2];
+            randomAmount.setSeed(data[3]);
+            if (data[4])
+                amountBag.list = data[4];
+        },
         setAmount:(amounts)=>{
             amountBag = { elements:amounts };
         },

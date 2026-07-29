@@ -74,6 +74,8 @@ Looking for videos of the first game, I remembered that I used to play _Survival
 
 There is a lot of room for creating more game modes and new gameplay ideas, but 3 modes ~~are~~ were more than enough for me.
 
+#### More game modes
+
 Feeling a little lonely? So am I! After release, I've added the _Yinyang mode_, which basically is a classic Vs. mode against _yourself in the past_.
 
 The game records the garbage you generate for ~30 seconds, and then it sends that back to you in the following ~30 seconds with the same timing. You can cancel incoming garbage stacking higher combos in 10-second rounds _à la tug-of-war_, but then you'll have to fight _that better version of you_. The game will unleash _your fury against yourself_, level after level. Have fun!
@@ -84,6 +86,33 @@ The game records the garbage you generate for ~30 seconds, and then it sends tha
 </div>
 
 Anyway, I've tried to make creating new modes [fairly](js/gamemodes.js) [simple](https://www.kesiev.com/dragfall/assets/modesdump.html), just in case.
+
+#### The quick drop button
+
+I usually keep working on my pet project until the result does the job and there is no feedback from the Internet. Someone asked for the _quick drop button_ implementation from the original game: if the pile is low enough, you can summon a burst of blocks to play with.
+
+I hadn't implemented it because it didn't seem necessary for this on-the-fly implementation. I was wrong: after implementing it, I remembered using it often to keep the game's pace high and score even more points. Many modes are now more fun and gain an interesting strategic layer, like in _Yinyang mode_.
+
+<div align="center" style="margin:60px 0">
+    <p><img src="markdown/shot6.png"></p>
+    <p>The Quick Drop button (red in Standard mode)</p>
+</div>
+
+#### Even more game modes
+
+The quick save and quick drop features had a specific purpose: implement the requested _Chill mode_. In this mode, there are no timers and no falling blocks as you move them. You can tidy up your blocks at your pace and ask for a few more using quick drops. The quick save feature will save it on your device as you close the page, so you can come later and take care of your pile. Since the summer holidays are approaching, I gave it a "beach" theme.
+
+<div align="center" style="margin:60px 0">
+    <p><img src="markdown/shot7.png"></p>
+    <p>Chill mode</p>
+</div>
+
+...And, after a timeless mode, what about a _timed one_? _40 Lines mode_ is quite a classic in Tetris games: you have to clear 40 lines as fast as you can. After tidying up the game modes definition file and reworking the game timers, I've added a _40-Lines mode_. You can't gain _color gems_ or get any special block in this mode, so it's all about your stacking skills.
+
+<div align="center" style="margin:60px 0">
+    <p><img src="markdown/shot8.png"></p>
+    <p>40-Lines mode</p>
+</div>
 
 ### The animations
 
@@ -110,9 +139,20 @@ Oh, my beloved [The Mod Archive](https://modarchive.org/). I've looked for some 
 
 _Authors are in the credits, and songs should be under the [Mod Archive Distribution license](https://modarchive.org/index.php?terms-upload). If you'd like me to remove (or include) your song, please contact me!_
 
+### The controls
+
+Someone on Reddit asked for multiple control schemes, so I've added keyboard and gamepad support. The game is very different when played with buttons!
+
+<div align="center" style="margin:60px 0">
+    <p><img src="markdown/shot5.png"></p>
+    <p>When using buttons, you play by moving a blinking cursor around the grid</p>
+</div>
+
 ### The extras
 
 The game works natively on multiple resolutions with optional scaling, fullscreen, offline, and it can be installed on your device. I wanted to be able to _always_ stack.
+
+Some modes have longer games, and I found myself having to interrupt them on several occasions. I decided to add an optional quick save feature: when the game is closed, the state is saved and automatically reloaded when reopened.
 
 ### Credits
 
@@ -131,6 +171,8 @@ The game works natively on multiple resolutions with optional scaling, fullscree
  - [d/1369](https://www.dwitter.net/d/1369) by tomkh
  - [Infinite #flower remix cycle](https://dwitter.net/d/17621) by DaSpider, pavel
  - [Circle Factory](https://www.dwitter.net/d/14063) by KilledByAPixel
+ - [d/7242](https://www.dwitter.net/d/7242) by yonatan
+ - [A blue-to-magenta hyperspace tunnel with persistent luminous trails](https://www.dwitter.net/d/35918) by ichrvk
             
 #### Music
 
@@ -141,6 +183,7 @@ The game works natively on multiple resolutions with optional scaling, fullscree
  - [Clubbing on Delirium](https://modarchive.org/index.php?request=view_by_moduleid&query=194537) by Origin/Nemesis
  - [Funk is a Religion](https://modarchive.org/index.php?request=view_by_moduleid&query=134285) remix by dj Fulanito, original by /diesel
  - [Ying Yang](https://modarchive.org/index.php?request=view_by_moduleid&query=138705) by KemperBoyd1974
+ - [Rainy Day](https://modarchive.org/index.php?request=view_by_moduleid&query=159887) by Chromag/talent
 
 #### Sound effects
 
@@ -154,3 +197,4 @@ The game works natively on multiple resolutions with optional scaling, fullscree
 
   - [Bianca](https://www.linearkey.net/)
   - [Preuk](https://mastodon.social/@Preuk@framapiaf.org)
+  - Dymonika _(Suggested new DRAGFALL features on Reddit)_

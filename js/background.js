@@ -7,13 +7,14 @@ function BackgroundAnimation() {
         
     let
         self,
-        callback, brightness,
+        callback, brightness, backgroundColor,
         startedId,
         started,
         quality = 1,
         speed = 0.0005,
         hAlign, vAlign,
         prevWidth, prevHeight, ox, oy, ow, oh, dx, dy,
+        u = 0,
         c = document.createElement("canvas"),
         x = c.getContext("2d"),
         C = Math.cos,
@@ -80,11 +81,29 @@ function BackgroundAnimation() {
                 callback:(t)=>{
                     for(i=1;i<500;x.fill(p=new Path2D(),p.ellipse(c.width-((S(i)*1e9+t*i)%3e3-499),i*99%1080,q=1e4/i,q,i,0,i++-1?4+4*S(9*i+t):7)))x.fillStyle=R(i*4,i/2,i)
                 }
+            },{
+                // https://www.dwitter.net/d/7242
+                brightness:0.8,
+                vAlign:1,
+                set:{ width:99, height: Math.floor(99 * RATIO), scale:1 },
+                backgroundColor:"#7f84ff",
+                callback:(t)=>{
+                    for(i=j=c.width=99;i--;)for(X=i-50,Y=0;Y++<j;)h=S(X/Y)*S(Y-t*4),x.fillStyle=Y<40?'#f944':R(n=16-h*9,n*6,n*7),x.fillRect(i,Y+h*9*Y/j,Y/j,99)
+                }
+            },{
+                // https://www.dwitter.net/d/35918
+                brightness:0.8,
+                callback:(t)=>{
+                    x.fillStyle='#0012';x.fillRect(0,0,2e3,2e3);for(i=256;i--;)z=i-t*60&255,r=4e4/z,x.fillStyle=R(z,9,255),x.fillRect(960+C(i)*r,540+S(i)*r,9,9)
+                }
             }
         ];
 
     self = {
         canvas:c,
+        getAnimation:()=>{
+            return startedId;
+        },
         debug:()=>{
             c.style.border = "1px solid #f00";
             c.style.position = "fixed";
@@ -110,11 +129,13 @@ function BackgroundAnimation() {
                 animation = ANIMATIONS[id];
 
             startedId = id;
+            u = 0;
             started = 0;
             prevWidth = 0;
             x.setTransform(1, 0, 0, 1, 0, 0);
             callback = animation.callback;
             brightness = animation.brightness || BRIGHTNESS;
+            backgroundColor = animation.backgroundColor;
 
             hAlign = animation.hAlign;
             vAlign = animation.vAlign;
@@ -175,6 +196,10 @@ function BackgroundAnimation() {
             }
             callback((dt-started)*speed);
             dx.filter = "brightness("+(bright*brightness)+")";
+            if (backgroundColor) {
+                dx.fillStyle = backgroundColor;
+                dx.fillRect(0,0,width,height);
+            }
             dx.drawImage(c,ox,oy,ow,oh,0,0,width,height);
             dx.filter = "none"; 
         }

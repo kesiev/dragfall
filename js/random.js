@@ -19,6 +19,12 @@ function Random(seed) {
 
     let
         self = {
+            getSeed:()=>{
+                return seed;
+            },
+            setSeed:(s)=>{
+                seed = s
+            },
             clone:()=>{
                 return new Random(seed);
             },

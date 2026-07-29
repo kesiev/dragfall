@@ -407,11 +407,16 @@ function AudioPlayer(settings) {
         }
     }
 
+    this.getMusic=()=>{
+        if (mixerStatus == 1) return mixerNextMusic;
+        else return musicPlaying;
+    }
+
     this.stopMusic=(dontforget)=>{
         if (this.audioInitialize()) {
             this.stopAudio(musicPlaying)
             if (!dontforget) musicPlaying=0;
-            else if (mixerStatus == 1) musicPlaying = mixerNextMusic;
+            else musicPlaying = this.getMusic();
             mixerStop();
         }
     }

@@ -1,6 +1,7 @@
 
 function Field(width, height) {
     let
+        self,
         field = [];
 
     for (let i=0;i<height;i++) {
@@ -227,10 +228,21 @@ function Field(width, height) {
         })
     }
 
-    return {
+    self = {
         width:width,
         height:height,
         field:field,
+        serialize:()=>{
+            return {
+                width:width,
+                height:height,
+                field:JSON.parse(JSON.stringify(field))
+            };
+        },
+        setField:(f)=>{
+            field = f;
+            self.field = field;
+        },
         extractBlockAt:(x, y)=>{
             if (isFieldFilled(x, y)) {
                 let
@@ -296,5 +308,7 @@ function Field(width, height) {
                         field[y+block.y][x+block.x] = block.pattern[y][x];
         }
     }
+
+    return self;
 
 }

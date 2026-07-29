@@ -45,6 +45,26 @@ function FieldEffects(isSolid, isIdleAnimation, field) {
     }
 
     return {
+        serialize:()=>{
+            return [
+                idleRangeR,
+                idleRangeG,
+                idleRangeB,
+                idleSpeed,
+                idleMulX,
+                idleMulY,
+                idleMulRatio
+            ];
+        },
+        unserialize:(data)=>{
+            idleRangeR = data[0];
+            idleRangeG = data[1];
+            idleRangeB = data[2];
+            idleSpeed = data[3];
+            idleMulX = data[4];
+            idleMulY = data[5];
+            idleMulRatio = data[6];
+        },
         addFlash:(force, x, y, duration, r, g, b)=>{
             if (force || !effects[y][x])
                 effects[y][x] = { type:EFFECT_FLASH, duration:duration, r:r, g:g, b:b, gl:0 };

@@ -13,9 +13,10 @@ function Game() {
         MIN_FONTSIZE = 8,
         PADDING_RATIO = 0.01,
         // --- Title screen
-        GAME_LOCALSTORAGE = "_DRAGFALL";
+        GAME_LOCALSTORAGE = "_DRAGFALL",
+        GAME_STATE_LOCALSTORAGE = "_DRAGFALL_S",
         GAME_NAME = "DRAGFALL",
-        GAME_VERSION = "0.2.1";
+        GAME_VERSION = "0.3.1",
         GAME_FOOTER = [ "Drag up-down", "Hit to select", "v"+GAME_VERSION+" by KesieV" ],
         GAME_CREDITS_MUSIC = "track2",
         GAME_GITHUB = "http://github.com/kesiev/dragfall",
@@ -74,6 +75,16 @@ function Game() {
             "Circle Factory",
             "https://www.dwitter.net/d/14063",
             "by KilledByAPixel",
+            "",
+            "d/7242",
+            "https://www.dwitter.net/d/7242",
+            "by yonatan",
+            "",
+            "A blue-to-magenta hyperspace",
+            "tunnel with persistent",
+            "luminous trails",
+            "https://www.dwitter.net/d/35918",
+            "by ichrvk",
             "", "",
             "< MUSIC >",
             "",
@@ -98,6 +109,9 @@ function Game() {
             "",
             "Ying Yang",
             "by KemperBoyd1974",
+            "",
+            "Rainy Day",
+            "by Chromag/talent",
             "", "",
             "< SFX >",
             "",
@@ -113,6 +127,7 @@ function Game() {
             "",
             "Bianca",
             "Preuk",
+            "Dymonika",
         ],
         TITLE_START = "HIT ANYWHERE TO START",
         TITLE_COLOR = "#FFF",
@@ -120,10 +135,9 @@ function Game() {
         MAINMENU_COLOR_BORDER = "#c33",
         MAINMENU_COLOR = "#400",
         MAINMENU_COLOR_TEXT = { r:255, g:255, b:255 },
-        MENU_FONTSIZE = 10,
+        MENU_FONTSIZE = 9,
         MENU_TAPTIMING = 500,
         TITLE_SHADOWCOLOR = "#000",
-        BORDER_DISTANCE = 15, // Prevent sides swipe on mobile
         // --- Credits
         CREDITS_COLOR = "#FFF",
         CREDITS_COLOR_SHADOW = "#000",
@@ -177,6 +191,8 @@ function Game() {
         GAMESTATE_LOADING = 0,
         GAMESTATE_TITLE = 1,
         GAMESTATE_PLAY = 2,
+        // --- Quick save
+        QUICKSAVE_MODES = [ "OFF", "ON CLOSE", "ALWAYS" ],
         // --- Play mode
         WARNING_TEXT = "WARNING",
         WARNING_COLOR_SHADOW = "#000",
@@ -195,6 +211,16 @@ function Game() {
         ROWTEXT_DELAY = 100,
         SHAKEDURATION_X = 100,
         SHAKEDURATION_Y = 100,
+        QUICKDROP_WIDTH = 23,
+        QUICKDROP_HEIGHT = 30,
+        QUICKDROP_MARGIN = 2,
+        QUICKDROP_FONTSIZE = 12,
+        QUICKDROP_PADDING = 5,
+        QUICKDROP_STICK = 40,
+        QUICKDROP_LABEL = String.fromCharCode(0x014D),
+        QUICKDROP_SPEED = 250,
+        QUICKDROP_SLIDE = 10,
+        BORDER_DISTANCE = Math.max(QUICKDROP_WIDTH + QUICKDROP_MARGIN,  15), // Prevent sides swipe on mobile
         // --- Cursor
         CURSOR_SHADOW = "#000",
         CURSOR_SIZE = 2,
@@ -207,7 +233,21 @@ function Game() {
         // --- Gameover screen       
         TITLE_BACKGROUNDS = [ 1, 2, 3 ],
         HIGHSCORE_LINES = 2,
-        // --- Game modes        
+        // --- Game modes
+        MTIMEBAR_NONE = 0,
+        MTIMEBAR_TIMELIMIT = 1,
+        MTIMEBAR_ROUNDLIMIT = 2,
+        MTIMEBAR_TUGOFWARLIMIT = 3,
+        MONNEWBLOCK_NOTHING = 0,
+        MONNEWBLOCK_CHECKNEWROUNDSTART = 1,
+        MONNEWBLOCK_NEWTIMELIMIT = 2,
+        MONNEWBLOCK_COLLECTGARBAGE = 3,
+        MONTIMEOUT_NOTHING = 0,
+        MONTIMEOUT_NEWLEVEL = 1,
+        MONTIMEOUT_NEWTUGOFWAR = 2,
+        MONTIMEOUT_AUTODROP = 3,
+        MEVALUATE_SCORE = 0,
+        MEVALUATE_TIME = 1,
         GAMEMODES = GameModes(),
         GAMEMODE_DEFAULT = 0,
         SEEDS = 1000000,
@@ -243,6 +283,7 @@ function Game() {
         innerCellWidth, innerCellHeight,
         sparkleX, sparkleY, sparkleWidth, sparkleHeight,
         field, fieldWidth, fieldHeight, lowestLine,
+        lowestBlankLine,
         // --- All clear
         isAllClearTest, allClearAutoDrop, allClearAutoDropAmount,
         // --- Loading
@@ -270,6 +311,8 @@ function Game() {
         deltaScoreEffectX, deltaScoreEffectY, deltaScoreEffectFont, deltaScoreBlur, deltaScoreSlide,
         // --- Intro
         introText,
+        // --- Game over
+        gameoverSound, gameoverLines, gameclearLines, endgameLines,
         // --- Game initialization
         autoDrops = 0,
         // --- Settings
@@ -280,19 +323,32 @@ function Game() {
         score, lines,
         level, linesPerLevel, linesToNextLevel, levelCap, levelMultiplierRatio,
         timeLimit, timeLimitIsFall, nextBlockStart,
-        survivalMode, normalMode,
         combo,
         isWarning,
         isGameOver,
+        isGameRunning,
         isHighScore,
         progress = [],
+        // --- Game serialize
+        latestGameSerialize,
         // --- Vs. You mode
-        vsYouMode, vsYouRecordStart, vsYouRecord, vsYouRecordGarbage, vsYouCurrentRecording, vsYouRecordingLength, vsYouPunishmentTrack, vsYouTurn,
+        vsYouRecordStart, vsYouRecord, vsYouRecordGarbage, vsYouCurrentRecording, vsYouRecordingLength, vsYouPunishmentTrack, vsYouTurn,
         vsYouGarbageTrack, vsYouGarbageTrackStart, vsYouTransitions, vsYouGarbageGivenTotal, vsYouGarbageTrackTotal,
         // --- Garbage
         garbageTugOfWar, garbageAutoDropAmount, incomingGarbage,
         // --- Game mode
         nextGameMode, gameMode,
+        mEvaluate,
+        mTimeBar,
+        mResetTimeOnBlock,
+        mNewLevelOnLines,
+        mProgressOnLines,
+        mGameOverOnNoBlocks,
+        mGameOverOnNoAutoDropBlocks,
+        mOnNewBlock,
+        mOnTimeout,
+        // --- Color gems
+        colorGems,
         // --- Screen shake
         shakeXStart, shakeXDelta, shakeXEnd,
         shakeYStart, shakeYDelta, shakeYEnd,
@@ -311,15 +367,16 @@ function Game() {
         // --- Row text effects
         rowtextColor, rowtextColorShadow,
         rowTextEffectX, rowTextEffectY, rowTextEffectFont, rowTextBlur, rowTextSlide,
+        // --- Quick drop button
+        quickDropX, quickDropX1, quickDropY, quickDropY1, quickDropWidth, quickDropHeight, quickDropFont, quickDropLabel,
+        isQuickDropActive, isQuickDropAvailable, quickDropAutoDrops, quickDropAutoDropsAmount, quickDropThreshold, isQuickDrop,
+        quickDropColor, quickDropDisabledColor, quickDropShadowColor, quickDropFontColor, quickDropFontDisabledColor,
+        quickDropE, quickDropSlide,
         // --- Score comment
         scoreComment,
         // --- Game over
         gameoverColor, gameoverColorBorder,
         gameoverStart,
-        gameoverTextX,
-        gameoverX, gameoverY, gameoverHeight, gameoverWidth,
-        gameoverInnerX, gameoverInnerY, gameoverInnerHeight, gameoverInnerWidth,
-        gameoverRows = [],
         // --- Title screen
         titleX, titleY, titleFont, titleWave,
         // --- Footer
@@ -353,7 +410,7 @@ function Game() {
         canvasHeight,
         // --- Canvas elements
         canvas = document.createElement("canvas"),
-        ctx = canvas.getContext("2d");
+        ctx = canvas.getContext("2d"),
         backgroundAnimation = new BackgroundAnimation();
 
     // --- Colors
@@ -390,6 +447,158 @@ function Game() {
 
     function resetScheduler() {
         scheduler.length = 0;
+    }
+
+    // --- Game serializer
+
+    function serializeProgress() {
+        let
+            out = [];
+
+        progress.forEach((progress,id)=>{
+            let
+                map = {};
+            for (let k in progress)
+                if (k == "random")
+                    map[k] = progress[k].getSeed();
+                else
+                    map[k] = progress[k];
+            out[id] = map;
+        })
+        return out;
+    }
+
+    function serializeGame() {
+        let
+            music = audio.getMusic(),
+            data = [
+                /*  0 */ GAME_VERSION,
+                /*  1 */ gameMode.id,
+                /*  2 */ playE,
+                /*  3 */ nextBlockStart,
+                /*  4 */ score,
+                /*  5 */ lines,
+                /*  6 */ level,
+                /*  7 */ isWarning,
+                /*  8 */ combo,
+                /*  9 */ garbageTugOfWar,
+                /* 10 */ incomingGarbage,
+                /* 11 */ vsYouRecord,
+                /* 12 */ vsYouRecordStart,
+                /* 13 */ vsYouRecordGarbage,
+                /* 14 */ vsYouCurrentRecording,
+                /* 15 */ vsYouGarbageTrack,
+                /* 16 */ vsYouGarbageTrackStart,
+                /* 17 */ vsYouGarbageTrackTotal,
+                /* 18 */ vsYouGarbageGivenTotal,
+                /* 19 */ vsYouTurn,
+                /* 20 */ linesPerLevel,
+                /* 21 */ linesToNextLevel,
+                /* 22 */ cursorX,
+                /* 23 */ cursorY,
+                /* 24 */ timeLimitIsFall,
+                /* 25 */ timeLimit,
+                /* 26 */ garbageLimit,
+                /* 27 */ fieldEffects.serialize(),
+                /* 28 */ field.serialize(),
+                /* 29 */ next.serialize(),
+                /* 30 */ garbageNext.serialize(),
+                /* 31 */ isBackgroundAnimationChanging && (nextBackgroundAnimation != -1) ? nextBackgroundAnimation : backgroundAnimation.getAnimation(),
+                /* 32 */ random.getSeed(),
+                /* 33 */ music ? music.id : 0,
+                /* 34 */ serializeProgress(),
+                /* 35 */ autodropEnded,
+                /* 36 */ isQuickDropAvailable,
+            ];
+
+        return data;
+    }
+
+    function restoreGame(data) {
+        if (data[0] == GAME_VERSION) {
+            let
+                gameMode;
+
+            GAMEMODES.list.forEach(mode=>{
+                if (mode.id == data[1])
+                    gameMode = mode;
+            })
+
+            if (gameMode) {
+                // --- Restore game mode
+                newGame(gameMode, true);
+
+                // --- Restore data
+                playE = data[2];
+                nextBlockStart = data[3];
+                score = data[4];
+                lines = data[5];
+                level = data[6];
+                isWarning = data[7];
+                combo = data[8];
+                garbageTugOfWar = data[9];
+                incomingGarbage = data[10];
+                vsYouRecord = data[11];
+                vsYouRecordStart = data[12];
+                vsYouRecordGarbage = data[13];
+                vsYouCurrentRecording = data[14];
+                vsYouGarbageTrack = data[15];
+                vsYouGarbageTrackStart = data[16];
+                vsYouGarbageTrackTotal = data[17];
+                vsYouGarbageGivenTotal = data[18];
+                vsYouTurn = data[19];
+                linesPerLevel = data[20];
+                linesToNextLevel = data[21];
+                cursorX = data[22];
+                cursorY = data[23];
+                timeLimitIsFall = data[24];
+                timeLimit = data[25];
+                garbageLimit = data[26];
+                fieldEffects.unserialize(data[27]);
+                field.setField(data[28].field);
+                next.unserialize(data[29]);
+                garbageNext.unserialize(data[30]);
+
+                if (data[31] === undefined)
+                    isBackgroundAnimated = false;
+                else {
+                    backgroundAnimation.start(data[31]);
+                    isBackgroundAnimated = true;
+                }
+
+                random.setSeed(data[32]);
+                audio.playMusic(audio.audio[data[33]]);
+
+                data[34].forEach((p,id)=>{
+                    let
+                        map = {};
+                    for (let k in p)
+                        if (k == "random")
+                            map[k] = new Random(p[k]);
+                        else
+                            map[k] = p[k];
+                    progress[id] = map;
+                });
+
+                autodropEnded = data[35];
+                isQuickDropAvailable = data[36];
+
+                // --- Restore running gamestate
+                gameState = GAMESTATE_PLAY;
+                gameStarting = false;
+                autoDrops = 0;
+                isInteractive = true;
+                isPlayNotPaused = true;
+                gotoPause();
+
+                // --- Store backup
+                latestGameSerialize = data;
+
+                return true;
+            }
+        }
+        latestGameSerialize = 0;
+        return false;
     }
 
     // --- Background animations
@@ -489,12 +698,26 @@ function Game() {
             selectedOption = 0,
             mainMenu = [];
 
-        GAMEMODES.forEach(mode=>{
+        GAMEMODES.list.forEach(mode=>{
+            let
+                label;
+
             if (mode.id == settings.lastMode)
                 selectedOption = mainMenu.length;
 
+            switch (GAMEMODES.models[mode.initialize.model].mEvaluate) {
+                case MEVALUATE_SCORE:{
+                    label = [ mode.label, "HIGH SCORE", settings.stats[mode.id].highScore ];
+                    break;
+                }
+                case MEVALUATE_TIME:{
+                    label = [ mode.label, "BEST TIME", settings.stats[mode.id].highScore ? formatTime(settings.stats[mode.id].highScore) : "---" ];
+                    break;
+                }
+            }
+
             mainMenu.push({
-                label:[ mode.label, "HIGH SCORE", settings.stats[mode.id].highScore ],
+                label:label,
                 onSelect:(menu)=>{
                     menu.disable();
                     settings.lastMode = mode.id;
@@ -574,6 +797,15 @@ function Game() {
                     label:[ "BG QUALITY", BACKGROUND_QUALITY[settings.bgquality].label ],
                     onSelect:(menu, option)=>{
                         settings.bgquality = (settings.bgquality+1)%BACKGROUND_QUALITY.length;
+                        defaultMenuEffect();
+                        saveSettings();
+                        applySettings();
+                        gotoOptions(option);
+                    }
+                },{
+                    label:[ "QUICK SAVE", QUICKSAVE_MODES[settings.saveState]],
+                    onSelect:(menu, option)=>{
+                        settings.saveState = (settings.saveState+1)%QUICKSAVE_MODES.length;
                         defaultMenuEffect();
                         saveSettings();
                         applySettings();
@@ -779,18 +1011,20 @@ function Game() {
                     gameoverProgress = isGameOver ? Math.min(1,(gameE - gameoverStart) / 500) : 0,
                     effectsGameOverProgress = 0.5+(1-gameoverProgress)*0.5,
                     opacity = Math.sin(gameE*0.01)*0.1,
+                    blink = Math.sin(gameE*0.01)*10,
                     warningWave = Math.floor(Math.sin(gameE*0.01)*cellHeight*0.1),
+                    isQuickDropVisible, quickDropDx, quickDropAlpha,
                     shakeX = 0,
                     shakeY = 0,
                     timePassed,
                     timeRatio;
 
-                if (gameE > shakeXEnd)
+                if (gameE >= shakeXEnd)
                     shakeXEnd = 0;
                 else
                     shakeX = Math.floor(Math.random()*shakeXDelta)-shakeXStart;
 
-                if (gameE > shakeYEnd)
+                if (gameE >= shakeYEnd)
                     shakeYEnd = 0;
                 else
                     shakeY = Math.floor(Math.random()*shakeYDelta)-shakeYStart;
@@ -830,7 +1064,7 @@ function Game() {
 
                 fieldEffects.render(ctx, gameE, gridX, gridY, effectsGameOverProgress);
 
-                if (isWarning || (vsYouMode && incomingGarbage)) {
+                if (isWarning || incomingGarbage) {
                     ctx.fillStyle = "rgba(255,0,0,"+(0.3+opacity)+")";
                     ctx.fillRect(gridX,gridY,fieldWidth,cellHeight+warningWave);
                 }
@@ -853,9 +1087,49 @@ function Game() {
                     }
                 })
 
-                ctx.font = scoreFont;
                 ctx.textBaseline = "middle";
                 ctx.textAlign = "center";
+
+                if (quickDropE) {
+                    let
+                        progress = Math.min(1,(gameE-quickDropE)/QUICKDROP_SPEED);
+                    if (isQuickDropAvailable) {
+                        quickDropDx = Math.floor((1-progress)*quickDropSlide);
+                        quickDropAlpha = progress;
+                    } else {
+                        quickDropDx = Math.floor(progress*quickDropSlide);
+                        quickDropAlpha = 1-progress;
+                    }
+                    if (progress == 1)
+                        quickDropE = 0;
+                    isQuickDropVisible = true;
+                } else if (isQuickDropAvailable) {
+                    isQuickDropVisible = true;
+                    quickDropDx = 0;
+                    quickDropAlpha = 1;
+                } else {
+                    isQuickDropVisible = false;
+                }
+
+                if (isQuickDropVisible) {
+                    if (isInteractive)
+                        ctx.fillStyle = "rgba("+Math.min(255, quickDropColor.r+blink)+","+Math.min(255, quickDropColor.g+blink)+","+Math.min(255, quickDropColor.b+blink)+","+quickDropAlpha+")";
+                    else
+                        ctx.fillStyle = paletteToRGBA(quickDropDisabledColor, quickDropAlpha);
+                    ctx.shadowColor = paletteToRGBA(quickDropShadowColor, quickDropAlpha)
+                    ctx.shadowBlur = scoreBlur;
+                    ctx.fillRect(quickDropX-quickDropDx, quickDropY, quickDropWidth, quickDropHeight);
+
+                    if (isInteractive)
+                        ctx.fillStyle = paletteToRGBA(quickDropFontColor, quickDropAlpha);
+                    else
+                        ctx.fillStyle = paletteToRGBA(quickDropFontDisabledColor, quickDropAlpha);
+                    ctx.shadowBlur = 0;
+                    ctx.font = quickDropFont;
+                    ctx.fillText(quickDropLabel, quickDropLabelX-quickDropDx, quickDropLabelY);
+                }
+
+                ctx.font = scoreFont;
                 ctx.shadowBlur = scoreBlur;
                 ctx.shadowColor = footerbarColorBorder;
                 ctx.fillStyle = footerbarColorBorder;
@@ -867,9 +1141,9 @@ function Game() {
 
                 if (isGameOver) {
                     ctx.fillStyle = ctx.shadowColor = paletteToRGBA(gameoverColorBorder, gameoverProgress);
-                    ctx.fillRect(gameoverX,gameoverY,gameoverWidth,gameoverHeight);
+                    ctx.fillRect(endgameLines.x,endgameLines.y,endgameLines.width,endgameLines.height);
                     ctx.fillStyle = ctx.shadowColor = paletteToRGBA(gameoverColor, gameoverProgress)
-                    ctx.fillRect(gameoverInnerX,gameoverInnerY,gameoverInnerWidth,gameoverInnerHeight);
+                    ctx.fillRect(endgameLines.innerX,endgameLines.innerY,endgameLines.innerWidth,endgameLines.innerHeight);
                 } else if (isButtonMode) {
                     let
                         isDrag = state == 1,
@@ -888,100 +1162,116 @@ function Game() {
 
                 // --- Render bar
                 if (timePassed < timeLimit) {
-                    let
-                        color;
+                    if (timebarHeight) {
+                        let
+                            color;
 
-                    if (normalMode) {
-                        if (timeLimitIsFall)
-                            color = paletteToRGBA(timebarColorCritical,(0.7+Math.sin(timePassed/timeRatio*0.002)*0.3));
-                        else
-                            color = paletteToRGBA(timebarColor, (0.1+(timeRatio*0.9)));
-                    } else if (survivalMode) {
-                        color = paletteToRGBA(timebarColorCritical,(0.7+Math.sin(timePassed/timeRatio*0.002)*0.3));
-                    } else if (vsYouMode) {
-                        if (garbageTugOfWar > 0)
-                            color = paletteToRGBA(timebarColorCritical,(0.7+Math.sin(timePassed/timeRatio*0.002)*0.3));
-                        else
-                            color = paletteToRGBA(timebarColor, (0.1+(timeRatio*0.9)));
+                        switch (mTimeBar) {
+                            case MTIMEBAR_TIMELIMIT:{
+                                if (timeLimitIsFall)
+                                    color = paletteToRGBA(timebarColorCritical,(0.7+Math.sin(timePassed/timeRatio*0.002)*0.3));
+                                else
+                                    color = paletteToRGBA(timebarColor, (0.1+(timeRatio*0.9)));
+                                break;
+                            }
+                            case MTIMEBAR_ROUNDLIMIT:{
+                                color = paletteToRGBA(timebarColorCritical,(0.7+Math.sin(timePassed/timeRatio*0.002)*0.3));
+                                break;
+                            }
+                            case MTIMEBAR_TUGOFWARLIMIT:{
+                                if (garbageTugOfWar > 0)
+                                    color = paletteToRGBA(timebarColorCritical,(0.7+Math.sin(timePassed/timeRatio*0.002)*0.3));
+                                else
+                                    color = paletteToRGBA(timebarColor, (0.1+(timeRatio*0.9)));
+                                break;
+                            }
+                        }
+
+                        ctx.fillStyle = ctx.shadowColor = color;
+                        ctx.fillRect(timebarX,timebarY,Math.floor(timebarWidth*timeRatio),timebarHeight);
                     }
-
-                    ctx.fillStyle = ctx.shadowColor = color;
-                    ctx.fillRect(timebarX,timebarY,Math.floor(timebarWidth*timeRatio),timebarHeight);
                 } else {
 
                     // --- Manages autodrop
                     if (timeLimitIsFall && !schedulePlayerDrop) {
-                        if (survivalMode) {
-                            nextBlockStart = playE;
-                            newLevel(true, true);
-                            checkProgress(true, false);
-                            autoPlayerDrop();
-                        } else if (vsYouMode) {
-                            if (incomingGarbage) {
-                                vsYouGarbageGivenTotal+=incomingGarbage;
-                                // --- Spawn garbage
-                                setScoreComment(true, incomingGarbage+" garbage");
-                                // --- First garbage is autodrop, the rest is true garbage
-                                if (incomingGarbage > 1) {
-                                    autodropEnded = 0;
-                                    isAutodropGarbage = true;
-                                    autoDrops = incomingGarbage-1;
-                                    autoDropAmount = garbageAutoDropAmount;
+                        switch (mOnTimeout) {
+                            case MONTIMEOUT_NEWLEVEL:{
+                                nextBlockStart = playE;
+                                newLevel(true, true);
+                                checkProgress(true, false);
+                                autoPlayerDrop();
+                                break;
+                            }
+                            case MONTIMEOUT_NEWTUGOFWAR:{
+                                if (incomingGarbage) {
+                                    vsYouGarbageGivenTotal+=incomingGarbage;
+                                    // --- Spawn garbage
+                                    setScoreComment(true, incomingGarbage+" garbage");
+                                    // --- First garbage is autodrop, the rest is true garbage
+                                    if (incomingGarbage > 1) {
+                                        autodropEnded = 0;
+                                        isAutodropGarbage = true;
+                                        autoDrops = incomingGarbage-1;
+                                        autoDropAmount = garbageAutoDropAmount;
+                                    } else {
+                                        autodropEnded = 2;
+                                    }
+                                    autoPlayerDrop();
                                 } else {
+                                    // --- New time window
+                                    nextBlockStart = playE;
                                     autodropEnded = 2;
                                 }
-                                autoPlayerDrop();
-                            } else {
-                                // --- New time window
-                                nextBlockStart = playE;
-                                autodropEnded = 2;
-                            }
-                            garbageTugOfWar = 0;
-                            incomingGarbage = 0;
-                            vsYouCurrentRecording++;
-                            if (vsYouCurrentRecording >= vsYouRecordingLength) {
-                                let
-                                    newLevelSound = true;
+                                garbageTugOfWar = 0;
+                                incomingGarbage = 0;
+                                vsYouCurrentRecording++;
+                                if (vsYouCurrentRecording >= vsYouRecordingLength) {
+                                    let
+                                        newLevelSound = true;
 
-                                vsYouCurrentRecording = 0;
-                                vsYouGarbageTrackStart = playE;
-                                if (vsYouRecordGarbage == 0) {
-                                    // --- Punish bad play
-                                    vsYouGarbageTrack = [];
-                                    vsYouPunishmentTrack.forEach((garbage)=>{
-                                        vsYouGarbageTrack.push(garbage);
-                                    })
-                                    setScoreComment(true, "PUNISHMENT!");
-                                    audio.playAudio(audio.audio.gameover);
-                                } else {
-                                    // --- Perfect bonus
-                                    if (!vsYouGarbageGivenTotal && vsYouGarbageTrackTotal) {
-                                        addScore(level * vsYouGarbageTrackTotal * Math.ceil(field.width/2));
-                                        commitScore();
-                                        setScoreComment(true, "PERFECT!");
-                                        audio.playAudio(audio.audio.perfect);
-                                        newLevelSound = false;
+                                    vsYouCurrentRecording = 0;
+                                    vsYouGarbageTrackStart = playE;
+                                    if (vsYouRecordGarbage == 0) {
+                                        // --- Punish bad play
+                                        vsYouGarbageTrack = [];
+                                        vsYouPunishmentTrack.forEach((garbage)=>{
+                                            vsYouGarbageTrack.push(garbage);
+                                        })
+                                        setScoreComment(true, "PUNISHMENT!");
+                                        audio.playAudio(audio.audio.gameover);
+                                    } else {
+                                        // --- Perfect bonus
+                                        if (!vsYouGarbageGivenTotal && vsYouGarbageTrackTotal) {
+                                            addScore(level * vsYouGarbageTrackTotal * Math.ceil(field.width/2));
+                                            commitScore();
+                                            setScoreComment(true, "PERFECT!");
+                                            audio.playAudio(audio.audio.perfect);
+                                            newLevelSound = false;
+                                        }
+                                        // --- Play last recording
+                                        vsYouGarbageTrack = vsYouRecord;
                                     }
-                                    // --- Play last recording
-                                    vsYouGarbageTrack = vsYouRecord;
+                                    vsYouRecord = [];
+                                    vsYouRecordStart = playE;
+                                    vsYouRecordGarbage = 0;
+                                    vsYouGarbageTrackTotal = 0;
+                                    vsYouGarbageGivenTotal = 0;
+                                    // --- Change background
+                                    vsYouTurn = (vsYouTurn + 1) % 2;
+                                    runEvent(vsYouTransitions[vsYouTurn]);
+                                    // --- New level
+                                    newLevel(false, newLevelSound);
+                                    checkProgress(true, false);
+                                } else {
+                                    audio.playAudio(audio.audio.step, false, 0, 1.5);
                                 }
-                                vsYouRecord = [];
-                                vsYouRecordStart = playE;
-                                vsYouRecordGarbage = 0;
-                                vsYouGarbageTrackTotal = 0;
-                                vsYouGarbageGivenTotal = 0;
-                                // --- Change background
-                                vsYouTurn = (vsYouTurn + 1) % 2;
-                                runEvent(vsYouTransitions[vsYouTurn]);
-                                // --- New level
-                                newLevel(false, newLevelSound);
-                                checkProgress(true, false);
-                            } else {
-                                audio.playAudio(audio.audio.step, false, 0, 1.5);
+                                break;
                             }
-                        } else {
-                            nextBlockStart = playE;
-                            autoPlayerDrop();
+                            case MONTIMEOUT_AUTODROP:{
+                                nextBlockStart = playE;
+                                autoPlayerDrop();
+                                break;
+                            }
                         }
                     }
 
@@ -1024,14 +1314,23 @@ function Game() {
                 ctx.shadowColor = ctx.fillStyle = paletteToRGB(footerbarColorText);
 
                 if (!scoreComment)
-                    ctx.fillText(score, scoreX, scoreY);
+                    switch (mEvaluate) {
+                        case MEVALUATE_SCORE:{
+                            ctx.fillText(score, scoreX, scoreY);
+                            break;
+                        }
+                        case MEVALUATE_TIME:{
+                            ctx.fillText(lines+"/"+linesPerLevel+" "+formatTime(playE), scoreX, scoreY);
+                            break;
+                        }
+                    }
 
                 if (isGameOver) {           
                     let
                         gameoverPulse = Math.sin(gameE*0.002);
 
                     ctx.textBaseline = "top";
-                    gameoverLines.forEach((row,i)=>{
+                    endgameLines.lines.forEach((row,i)=>{
                         if (row._fontSize) {
                             if (row.blink)
                                 ctx.fillStyle = paletteToRGBA(footerbarColorText,(0.7+gameoverPulse*0.3));
@@ -1039,21 +1338,21 @@ function Game() {
                                 ctx.fillStyle = paletteToRGB(footerbarColorText);
                             ctx.font = row._font;
                             if (row.text)
-                                ctx.fillText(row.text, gameoverTextX, row._y);            
+                                ctx.fillText(row.text, endgameLines.textX, row._y);            
                             else if (row.highScore && isHighScore)
-                                ctx.fillText(row.highScore, gameoverTextX, row._y);
+                                ctx.fillText(row.highScore, endgameLines.textX, row._y);
                             else if (row.lines)
-                                ctx.fillText(lines, gameoverTextX, row._y);
+                                ctx.fillText(lines, endgameLines.textX, row._y);
                             else if (row.level)
-                                ctx.fillText(level, gameoverTextX, row._y);
+                                ctx.fillText(level, endgameLines.textX, row._y);
                             else if (row.score)
-                                ctx.fillText(score, gameoverTextX, row._y);
+                                ctx.fillText(score, endgameLines.textX, row._y);
                         }
                     });
                     ctx.textBaseline = "middle";
                 }
                 
-                if (vsYouMode && incomingGarbage) {
+                if (incomingGarbage) {
                     ctx.font = warningFont;
                     ctx.shadowColor = WARNING_COLOR_SHADOW;
                     ctx.fillStyle = "rgba(255,255,255,"+(0.8-opacity)+")";
@@ -1132,14 +1431,112 @@ function Game() {
         requestAnimationFrame(renderScreen);
     }
 
+    // --- Score
+
+    function addScore(a) {
+        if (isGameRunning) {
+            deltaScore += a;
+            score += a;
+        }
+    }
+    
+    function showDeltaScore(text) {
+        deltaScoreEffect = { text:text, font:deltaScoreEffectFont, color:footerbarColorText, shadowColor:rowtextColorShadow, speed:DELTASCORE_SPEED, blur:deltaScoreBlur, slide:deltaScoreSlide, delay:0, isVertical:true };
+    }
+
+    function commitScore(a) {
+        if (deltaScore) {
+            showDeltaScore("+"+deltaScore+" pts.");
+            deltaScore = 0;
+        }
+    }
+
+    function setScoreComment(force, text) {
+        if (force || !scoreComment)
+            scoreComment = { text:text, font:scoreFont, color:footerbarColorText, shadowColor:rowtextColorShadow, speed:COMMENT_SPEED, blur:rowTextBlur, slide:rowTextSlide, delay:0 };
+    }
+
+    // --- Helpers
+
+    function isLineFilled(y) {
+        for (let x=0;x<field.width;x++)
+            if (field.isFieldFilled(x,y))
+                return true;
+    }
+
+    function formatTime(time) {
+        time = Math.floor(time/10);
+        dsec = time%100;
+        time = Math.floor(time/100);
+        sec = time%60;
+        time = Math.floor(time/60);
+        min = time%60;
+        time = Math.floor(time/60);
+        hours = time%60;
+        return (hours ? hours.toString().padStart(2, "0")+":" : "")+min.toString().padStart(2, "0")+":"+sec.toString().padStart(2, "0")+"."+dsec.toString().padStart(2, "0");
+    }
+
+    function resizeGameover(gameover, padding, vPixelSize, footerbarBorder, canvasWidth) {
+        let
+            gameoverBoxHeight = padding*2;
+
+        if (gameover.lines) {
+            gameover.lines.forEach((line,i)=>{
+                line._y = gameoverBoxHeight;
+                if (line.spacing)
+                    gameoverBoxHeight += (vPixelSize * line.spacing);
+                else {                    
+                    let
+                        fontSize = Math.max(MIN_FONTSIZE,(vPixelSize * line.fontSize));
+                    line._font = fontSize+"px y224";
+                    line._fontSize = fontSize;
+                    gameoverBoxHeight+=fontSize; 
+                }
+                gameoverBoxHeight+=padding;
+            })
+
+            gameover.innerHeight = gameoverBoxHeight+padding;
+            gameover.innerY = gridY+Math.floor((fieldHeight-gameover.innerHeight)/2);
+            gameover.innerX = 0;
+            gameover.innerWidth = canvasWidth;
+            gameover.lines.forEach(row=>row._y += gameover.innerY);
+
+            gameover.height = gameover.innerHeight+footerbarBorder*2;
+            gameover.x = gameover.innerX;
+            gameover.y = gameover.innerY-footerbarBorder;
+            gameover.width = canvasWidth;
+            gameover.textX = Math.floor(canvasWidth/2);
+        }
+    }
+
+    function quickSave() {
+        if (!isGameRunning || !settings.saveState)
+            delete localStorage[GAME_STATE_LOCALSTORAGE];
+        else
+            localStorage[GAME_STATE_LOCALSTORAGE] = JSON.stringify(latestGameSerialize);
+    }
+
     // --- Game flow
 
-     function newGame(mode) {
+    function newGame(mode) {
         let
-            seed;
+            seed,
+            gameModeModel;
 
         // --- Load game mode
         gameMode = mode;
+
+        gameModeModel = GAMEMODES.models[mode.initialize.model];
+        mTimeBar = gameModeModel.mTimeBar;
+        mResetTimeOnBlock = gameModeModel.mResetTimeOnBlock;
+        mNewLevelOnLines = gameModeModel.mNewLevelOnLines;
+        mProgressOnLines = gameModeModel.mProgressOnLines;
+        mEvaluate = gameModeModel.mEvaluate;
+        mGameOverOnNoBlocks = gameModeModel.mGameOverOnNoBlocks;
+        mGameOverOnNoAutoDropBlocks = gameModeModel.mGameOverOnNoAutoDropBlocks;
+        mOnNewBlock = gameModeModel.mOnNewBlock;
+        mOnTimeout = gameModeModel.mOnTimeout;
+
         if (mode.seed)
             seed = mode.seed;
         else
@@ -1168,11 +1565,8 @@ function Game() {
         autoDropAmount = mode.initialize.autoDropAmount;
         timeLimit = mode.initialize.setTimeLimit;
         timeLimitIsFall = mode.initialize.setTimeLimitIsFall;
-        survivalMode = mode.initialize.survivalMode;
-        vsYouMode = mode.initialize.vsYouMode;
         vsYouTransitions = mode.initialize.vsYouTransitions;
         garbageAutoDropAmount = mode.initialize.garbageAutoDropAmount;
-        normalMode = !survivalMode && !vsYouMode;
         introText = mode.initialize.introText;
         levelCap = mode.initialize.levelCap;
         footerbarColorBorder = mode.initialize.footerbarColorBorder;
@@ -1190,7 +1584,8 @@ function Game() {
         lineClearColor = mode.initialize.lineClearColor;
         particlesLineClearColor = mode.initialize.particlesLineClearColor;
         particlesFallColor = mode.initialize.particlesFallColor;
-        gameoverLines = mode.initialize.gameoverLines;
+        gameoverLines = { lines:mode.initialize.gameoverLines };
+        gameclearLines = { lines:mode.initialize.gameclearLines };
         vsYouRecordingLength = mode.initialize.vsYouRecordingLength;
         vsYouPunishmentTrack = mode.initialize.vsYouPunishmentTrack;
         garbageLimit = mode.initialize.setGarbageLimit;
@@ -1198,13 +1593,27 @@ function Game() {
         allClearAutoDropAmount = mode.initialize.allClearAutoDropAmount;
         cursorColor = mode.initialize.cursorColor;
         cursorColorDrag = mode.initialize.cursorColorDrag;
+        quickDropThreshold = mode.initialize.quickDropThreshold;
+        quickDropAutoDrops = mode.initialize.quickDropAutoDrops;
+        quickDropAutoDropsAmount = mode.initialize.quickDropAutoDropsAmount;
+        isQuickDropActive = mode.initialize.quickDropActive;
+        quickDropColor = mode.initialize.quickDropColor;
+        quickDropDisabledColor = mode.initialize.quickDropDisabledColor;
+        quickDropShadowColor = mode.initialize.quickDropShadowColor;
+        quickDropFontColor = mode.initialize.quickDropFontColor;
+        quickDropFontDisabledColor = mode.initialize.quickDropFontDisabledColor;
+        gameoverSound = mode.initialize.gameoverSound;
+        timeLimitPoints = mode.initialize.timeLimitPoints;
+        colorGems = mode.initialize.colorGems;
+        
         setPalette(mode.initialize.palette);
 
-        if (mode.initialize.setBackgroundAnimation !== null) {
+        if (mode.initialize.setBackgroundAnimation === undefined)
+            isBackgroundAnimated = false;
+        else {
             backgroundAnimation.start(mode.initialize.setBackgroundAnimation);
             isBackgroundAnimated = true;
-        } else
-            isBackgroundAnimated = false;
+        }
         
         // --- Initialize
         autodropEnded = autoDrops ? 0 : 1;
@@ -1241,8 +1650,13 @@ function Game() {
         isAutodropGarbage = false;
         schedulePlayerDrop = false;
         isAllClearTest = false;
+        isGameRunning = true;
         cursorX = Math.floor(field.width/2);
         cursorY = lowestLine - 2;
+        isQuickDrop = false;
+        isQuickDropAvailable = false;
+        quickDropE = 0;
+        endgameLines = 0;
         mode.progress.forEach((_,id)=>{
             progress[id] = { lines:0, random:new Random(seed+id) };
         })
@@ -1262,44 +1676,492 @@ function Game() {
         isInteractive = false;
         isWarning = false;
         isPlayNotPaused = false;
+        isGameRunning = false;
         resetScheduler();
     }
 
-    function gameOver() {
-        audio.playAudio(audio.audio.gameover);
+    function gameOver(failed) {
+        isGameRunning = false;
         isGameOver = true;
         enableHitAt = gameE + 500;
         gameoverStart = gameE;
         endGame();
-        if (score > settings.stats[gameMode.id].highScore) {
-            settings.stats[gameMode.id].highScore = score;
-            isHighScore = true;
-            saveSettings();
+        switch (mEvaluate) {
+            case MEVALUATE_SCORE:{
+                if (score > settings.stats[gameMode.id].highScore) {
+                    settings.stats[gameMode.id].highScore = score;
+                    isHighScore = true;
+                    saveSettings();
+                }
+                audio.playAudio(audio.audio[gameoverSound]);
+                endgameLines = gameoverLines;
+                break;
+            }
+            case MEVALUATE_TIME:{
+                if (failed) {
+                    audio.playAudio(audio.audio[gameoverSound]);
+                    endgameLines = gameoverLines;
+                } else {
+                    if (!settings.stats[gameMode.id].highScore || (playE < settings.stats[gameMode.id].highScore)) {
+                        settings.stats[gameMode.id].highScore = playE;
+                        isHighScore = true;
+                        saveSettings();
+                    }
+                    audio.playAudio(audio.audio.perfect);
+                    endgameLines = gameclearLines;
+                }
+                break;
+            }
+        }
+        
+    }
+
+    function doQuickDrop() {
+        if (isQuickDropAvailable && isInteractive && isGameRunning) {
+            autodropEnded = 0;
+            isQuickDrop = true;
+            autoDrops = quickDropAutoDrops;
+            autoDropAmount = quickDropAutoDropsAmount;
+            gameTurn();
         }
     }
 
-    function addScore(a) {
-        if (!isGameOver) {
-            deltaScore += a;
-            score += a;
-        }
-    }
-    
-    function showDeltaScore(text) {
-        deltaScoreEffect = { text:text, font:deltaScoreEffectFont, color:footerbarColorText, shadowColor:rowtextColorShadow, speed:DELTASCORE_SPEED, blur:deltaScoreBlur, slide:deltaScoreSlide, delay:0, isVertical:true };
+    function generateNextBlocks() {
+        let
+            sparkledColumns = [],
+            nxt = autoDrops && isAutodropGarbage ? garbageNext : next,
+            failures = nxt.failureLimit,
+            amount = 0,
+            isSpecial = false,
+            amountLimit =  autoDrops ? autoDropAmount : nxt.getAmount();
+
+        do {
+            let
+                placed = false,
+                blockModel = nxt.get(),
+                coordinates = [],
+                block = new Block(0, 0, blockModel.color, blockModel.logicColor, blockModel.unshatterable, blockModel.solid, blockModel.unmovable, blockModel.block.pattern);
+
+            for (let i=0;i<=field.width-blockModel.block.kick;i++)
+                coordinates.push(i);
+
+            do {
+                block.x = random.removeElement(coordinates);
+                if (block.fitsInField(field, 0, 0)) {
+                    placed = true;
+                    field.addBlock(block);
+                    if (blockModel.special)
+                        isSpecial = true;
+
+                    if (!autoDrops)
+                        for (let y=0;y<block.pattern.length;y++)
+                            for (let x=0;x<block.pattern[y].length;x++)
+                                if (block.pattern[y][x]){
+                                    let
+                                        column = block.x + x,
+                                        color = colors[block.logicColor] ? colors[block.logicColor].color : lineClearColor;
+                                    if (!sparkledColumns[column]) {
+                                        sparkledColumns[column] = true;
+                                        for (let i=0;i<field.height;i++)
+                                            fieldEffects.addFlash(false, column, i, 100+(Math.random()*500), color.r, color.g, color.b);
+                                    }
+                            }
+                    break;
+                }
+            } while (coordinates.length);
+
+            if (placed) {
+                failures = nxt.failureLimit;
+                amount++;
+            } else {
+                failures--;
+                if (!failures)
+                    break;
+            }
+
+        } while (amount < amountLimit);
+
+        if (isSpecial)
+            audio.playAudio(audio.audio.special);
+
+        return amount;
     }
 
-    function commitScore(a) {
-        if (deltaScore) {
-            showDeltaScore("+"+deltaScore+" pts.");
-            deltaScore = 0;
+    function gameRemoveLines() {
+        field.removeLines(preparedLines);
+        schedule(gameTurn,50);
+    }
+
+    function playerDrop(force) {
+        if (movingBlock) {
+            let
+                timePassed = playE - nextBlockStart,
+                isValidMove = movingBlock.x != movingBlockStart;
+
+            if (timeLimitPoints && (timePassed < timeLimit) && isValidMove)
+                addScore(timeLimitPoints);
+
+            field.addBlock(movingBlock);
+            movingBlock = 0;
+            shadowBlock = 0;
+            state = 0;
+            if (force || isValidMove)
+                gameTurn();
+        } else if (force) {
+            state = 0;
+            gameTurn();
         }
     }
 
-    function setScoreComment(force, text) {
-        if (force || !scoreComment)
-            scoreComment = { text:text, font:scoreFont, color:footerbarColorText, shadowColor:rowtextColorShadow, speed:COMMENT_SPEED, blur:rowTextBlur, slide:rowTextSlide, delay:0 };
+    function autoPlayerDrop(force) {
+        // --- If autodropping during player turn, instantly player drop
+        if (isInteractive)
+            playerDrop(true);
+        else
+            // --- Else schedules a player drop instead of making the player interactive at the end of the game turn
+            schedulePlayerDrop = true;
     }
+
+    function explosionAtCell(cell, color, duration) {
+         for (let i=0;i<5;i++)
+            particles.addLinear(
+                duration,
+                color,
+                particleSizeLarge,
+                gridX+cell.x*cellWidth+hCellWidth,
+                gridY+cell.y*cellHeight+hCellHeight,
+                Math.random()*40-20,
+                Math.random()*40-20
+            );
+    }
+
+    function shatterEffectAtCell(cell) {
+        let
+            shatterEffectColor = colors[cell.logicColor] ? colors[cell.logicColor].shatterEffectColor : SHATTEREFFECT_COLOR;
+        overFieldEffects.addHilight(true, cell.x, cell.y, 800, shatterEffectColor.r, shatterEffectColor.g, shatterEffectColor.b, 20);
+        explosionAtCell(cell, shatterEffectColor, PARTICLE_DURATION);
+    }
+
+    function newLevel(priority, sound) {
+        if (level < levelCap) {
+            level++;
+            if (sound) {
+                audio.playAudio(audio.audio.newLevel);
+            }
+            setScoreComment(priority, "LEVEL "+level);
+        }
+    }
+
+    function runEvent(event, progressItem) {
+        // --- Add new incoming block
+        if (event.addIncoming)
+            next.addIncoming(progressItem.random.element(event.addIncoming));
+        // --- Change spawing amount
+        if (event.setBlocksPerDrop)
+            next.setAmount(event.setBlocksPerDrop);
+        // --- Change autofall
+        if (event.setTimeLimitIsFall !== undefined)
+            timeLimitIsFall = event.setTimeLimitIsFall;
+        // --- Change time limit speed
+        if (event.setTimeLimit !== undefined)
+            timeLimit = event.setTimeLimit;
+        // --- Change colors
+        if (event.setIdleStyle)
+            fieldEffects.setIdleColors(
+                event.setIdleStyle[0],
+                event.setIdleStyle[1],
+                event.setIdleStyle[2],
+                event.setIdleStyle[3],
+                event.setIdleStyle[4],
+                event.setIdleStyle[5]
+            );
+        // --- Change music
+        if (event.playMusic)
+            audio.mixerPlayMusic(audio.audio[event.playMusic]);
+        // --- Change background
+        if (event.setBackgroundAnimation !== undefined)
+            fadeToBackgroundAnimation(event.setBackgroundAnimation);
+        // --- Garbage limit
+        if (event.setGarbageLimit !== undefined)
+            garbageLimit = event.setGarbageLimit;
+        // --- Autodrops
+        if (event.autoDrop) {
+            autodropEnded = 0;
+            autoDrops = event.autoDrop;
+        }
+        if (event.autoDropAmount)
+            autoDropAmount = event.autoDropAmount;
+        // --- Game clear
+        if (event.gameClear)
+            gameOver(false);
+    }
+
+    function checkProgress(newLevel, newLine) {
+        // --- Timed events
+        if (isGameRunning)
+            gameMode.progress.forEach((events,id)=>{
+                let
+                    progressItem = progress[id];
+                if (newLine)
+                    progressItem.lines++;
+                for (let i=0;i<events.length;i++) {
+                    let
+                        event = events[i];
+                    if (
+                        (
+                            (event.afterLevel && (level > event.afterLevel)) ||
+                            (newLevel && (event.atLevel && (level == event.atLevel)))
+                        ) && (
+                            (!event.atNewLevel || (event.atNewLevel && newLevel))
+                        )
+                    ) {
+                        if (!event.everyLines || (newLine && (progressItem.lines >= event.everyLines))) {
+                            progressItem.lines = 0;
+                            runEvent(event, progressItem);
+                        }
+                        break;
+                    }
+                }
+            })
+    }
+
+    function gameTurn() {
+        isInteractive = false;
+        isPlayNotPaused = false;
+
+        if (mResetTimeOnBlock)
+            nextBlockStart = playE;
+
+        let
+            movedCells = field.applyGravity();
+
+        if (movedCells.length) {
+            isPreviouslyMovedCells = true;
+            previouslyMovedCells = movedCells;
+            movedCells.forEach(cell=>{
+                fieldEffects.addFlash(true, cell.x, cell.y, 200, 255, 255, 255);
+            })
+            schedule(gameTurn,10);
+        } else {
+            if (!combo && isPreviouslyMovedCells) {
+                audio.playAudio(audio.audio.fall);
+                shakeYEnd = gameE + SHAKEDURATION_Y;
+                previouslyMovedCells.forEach(cell=>{
+                    for (let i=0;i<5;i++)
+                        particles.addFalling(
+                            PARTICLE_DURATION,
+                            colors[cell.logicColor] ? colors[cell.logicColor].particleColor : particlesFallColor,
+                            particleSize,
+                            gridX+cell.x*cellWidth+hCellWidth,
+                            gridY+cell.y*cellHeight+hCellHeight,
+                            10+Math.random()*3,
+                            0.05+(Math.random()*0.02),
+                            Math.random()-0.5,
+                            Math.random()*10
+                        );
+                })
+            }
+            isPreviouslyMovedCells = false;
+            preparedLines = field.prepareLines();
+            if (preparedLines.lines.length) {
+                let
+                    isNewLevel = false,
+                    shatterSfx = false,
+                    effectsCache = { shatteredColors:[], shatteredColumns:[] };
+                shakeXEnd = gameE + SHAKEDURATION_X;
+                preparedLines.lines.forEach((line,lid)=>{
+                    // --- Manage lines
+                    lines++;
+                    if (mNewLevelOnLines)
+                        if (level < levelCap) {
+                            linesToNextLevel--;
+                            if (linesToNextLevel<=0) {
+                                newLevel(true, true);
+                                isNewLevel = true;
+                                linesToNextLevel = linesPerLevel;
+                            }
+                        }
+
+                    // --- Manage score
+                    combo++;
+                    rowTextEffects[line.row] = { text:"CHAIN x"+combo, font:rowTextEffectFont, color:rowtextColor, shadowColor:rowtextColorShadow, speed:ROWTEXT_SPEED, delay:lid*ROWTEXT_DELAY, blur:rowTextBlur, slide:rowTextSlide };
+                    // --- Clearing lines with same logic color make a special block spawn
+                    if (colorGems)
+                        for (let i=0;i<LOGICCOLORS;i++)
+                            if (line.logicColors[i] == field.width)
+                                next.addIncoming({
+                                    special:true,
+                                    color:i+2,
+                                    logicColor:i,
+                                    block:{ kick:1, pattern:[ [ 1 ] ]}
+                                });
+
+
+                    // --- Check lines progress
+                    if (mProgressOnLines)
+                        checkProgress(isNewLevel, true);
+                });
+                // --- Manage cleared blocks
+                preparedLines.cells.forEach(cell=>{
+                    // --- Check cleared block special effects
+                    let
+                        effect = colors[cell.color];
+                    // --- Add score
+                    addScore(effect.score * (combo + Math.floor(level * levelMultiplierRatio)));
+                    // --- EFFECT: Shatter a color
+                    if ((effect.shatterColor!== undefined) && (!effectsCache.shatteredColors[effect.shatterColor])) {
+                        let
+                            shatteredCells = field.shatterColor(effect.shatterColor);
+                        shatteredCells.forEach(cell=>{
+                            shatterEffectAtCell(cell);
+                            shatterSfx = true;
+                        })
+                        effectsCache.shatteredColors[effect.shatterColor] = true;
+                    }
+                    // --- EFFECT: Shatter a column
+                    if ((effect.shatterColumn!== undefined) && (!effectsCache.shatteredColumns[cell.x])) {
+                        let
+                            shatteredCells = field.shatterColumn(cell.x);
+                        shatteredCells.forEach(cell=>{
+                            shatterEffectAtCell(cell);
+                            shatterSfx = true;
+                        })
+                        effectsCache.shatteredColors[effect.shatterColor] = true;
+                        // --- Hilight column
+                        for (let y=0;y<field.height;y++)
+                            overFieldEffects.addHilight(false, cell.x, y, 800, effect.effectColor.r, effect.effectColor.g, effect.effectColor.b, 20);
+                    }
+
+                    // --- Add cleared VFX
+                    overFieldEffects.addHilight(true, cell.x, cell.y, 400, lineClearColor.r, lineClearColor.g, lineClearColor.b, 20);
+                    explosionAtCell(cell, particlesLineClearColor, PARTICLE_DURATION_FAST);
+                })
+                if (shatterSfx)
+                    audio.playAudio(audio.audio.break);
+                audio.playAudio(audio.audio.line, false, 0, 1+Math.min(2,combo*0.2));
+                commitScore();
+                schedule(gameRemoveLines,300);
+            } else {
+                let
+                    prevQuickDropAvailable = isQuickDropAvailable;
+
+                // --- End combo
+                commitScore();
+
+                switch (mOnNewBlock) {
+                    case MONNEWBLOCK_CHECKNEWROUNDSTART:{
+                        if (autoDrops) {
+                            if (!isQuickDrop)
+                                nextBlockStart = playE;
+                        } else if (autodropEnded == 2) {
+                            autodropEnded = 3;
+                            if (isQuickDrop)
+                                isQuickDrop = false;
+                            else
+                                nextBlockStart = playE;
+                        }
+                        break;
+                    }
+                    case MONNEWBLOCK_NEWTIMELIMIT:{
+                        nextBlockStart = autoDrops ? 0 : playE;
+                        break;
+                    }
+                    case MONNEWBLOCK_COLLECTGARBAGE:{
+                        if (combo > 1) {
+                            let
+                                power = combo - 1;
+                            vsYouRecord.push([ playE-vsYouRecordStart, power ]);
+                            garbageTugOfWar -= power;
+                            vsYouRecordGarbage += power;
+                            incomingGarbage = Math.max(0, Math.min(garbageLimit, garbageTugOfWar));
+                        }
+                        break;
+                    }
+                }
+
+                combo = 0;
+                isGameOver = false;
+                    
+                // --- Check warning bar and endgame
+
+                isWarning = isLineFilled(warningRows);
+                isGameOver = isLineFilled(0);
+
+                // --- Check lowest blank line                
+                for (lowestBlankLine=lowestLine;lowestBlankLine>=0;lowestBlankLine--)
+                    if (!isLineFilled(lowestBlankLine))
+                        break;
+
+                isQuickDropAvailable = isQuickDropActive && (lowestBlankLine >= quickDropThreshold);
+                if (isQuickDropAvailable != prevQuickDropAvailable)
+                    quickDropE = gameE;
+
+                // --- Check end game
+                if (isGameOver || (
+                    (mGameOverOnNoBlocks && !generateNextBlocks()) ||
+                    (mGameOverOnNoAutoDropBlocks && autoDrops && !generateNextBlocks())
+                ))
+                    // --- End game
+                    gameOver(true);
+                else {
+                    // --- Continue
+                    if (isWarning)
+                        audio.playAudio(audio.audio.warning);
+                    if (autoDrops) {
+                        autoDrops--;
+                        if (!autoDrops)
+                            autodropEnded = 1;
+                        schedule(gameTurn,10);
+                    } else if (schedulePlayerDrop) {
+                        schedulePlayerDrop = false;
+                        playerDrop(true);
+                    } else {
+                        if (isAllClearTest) {
+                            if (lowestBlankLine == lowestLine) {
+                                setScoreComment(false, "ALL CLEAR!");
+                                audio.playAudio(audio.audio.perfect);
+                                addScore(level * field.width * 3);
+                                autodropEnded = 0;
+                                autoDrops = allClearAutoDrop;
+                                autoDropAmount = allClearAutoDropAmount;
+                                isAllClearTest = false;
+                                schedule(gameTurn,10);
+                            } else {
+                                isPlayNotPaused = true;
+                                isInteractive = true;
+                                if (settings.saveState) {
+                                    latestGameSerialize = serializeGame();
+                                    if (settings.saveState == 2)
+                                        quickSave();
+                                }
+                            }
+                        } else {
+                            isPlayNotPaused = true;
+                            isInteractive = true;
+                            isAllClearTest = true;
+                            if (settings.saveState) {
+                                latestGameSerialize = serializeGame();
+                                if (settings.saveState == 2)
+                                    quickSave();
+                            }
+                        }
+                    }
+                    if (autodropEnded == 1) {
+                        autodropEnded = 2;
+                        if (gameStarting) {
+                            vsYouRecordStart = playE;
+                            vsYouRecordGarbage = 0;
+                            gameStarting = false;
+                            setScoreComment(true, introText);
+                            audio.playMusic(audio.audio[nextMusic]);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // --- Screen resize
 
     function resize(times, force) {
         let
@@ -1315,7 +2177,8 @@ function Game() {
             footerFontSize,
             rowTextEffectFontSize,
             creditsFontSize,
-            gameoverBoxHeight = 0,
+            quickDropFontSize,
+            quickDropPadding,
             borderDistance,
             footerY,
             border;
@@ -1428,6 +2291,25 @@ function Game() {
             warningX = Math.floor(gridX + (fieldWidth/2));
             warningY = Math.floor(gridY + (cellHeight/2));
 
+            // --- Quick drop button
+            quickDropFontSize = Math.max(MIN_FONTSIZE,pixelSize * QUICKDROP_FONTSIZE);
+            quickDropPadding = pixelSize * QUICKDROP_PADDING;
+            quickDropSlide = pixelSize * QUICKDROP_SLIDE;
+            quickDropFont = quickDropFontSize+"px y224";
+            quickDropWidth = hPixelSize * QUICKDROP_WIDTH;
+            quickDropHeight = vPixelSize * QUICKDROP_HEIGHT;
+            quickDropX = gridX - (hPixelSize * QUICKDROP_MARGIN) - quickDropWidth;
+            quickDropY = Math.floor(gridY + (fieldHeight - quickDropHeight)*0.4);
+            if (quickDropX < pixelSize*QUICKDROP_STICK) {
+                quickDropWidth += quickDropX;
+                quickDropX = 0;
+            }
+            quickDropX1 = quickDropX+quickDropWidth;
+            quickDropY1 = quickDropY+quickDropHeight;
+            quickDropLabelX = quickDropX+Math.floor(quickDropWidth / 2);
+            quickDropLabelY = quickDropY+Math.floor(quickDropHeight / 2);
+            quickDropLabel = QUICKDROP_LABEL;
+
             // --- Row text
             rowTextEffectFontSize = Math.max(MIN_FONTSIZE, Math.floor(cellHeight*0.5));
             rowTextEffectFont = rowTextEffectFontSize+"px y224";
@@ -1437,32 +2319,10 @@ function Game() {
             rowTextSlide = cellWidth * 3;
 
             // --- Game over screen
-            gameoverBoxHeight = padding*2;
-            gameoverLines.forEach((line,i)=>{
-                line._y = gameoverBoxHeight;
-                if (line.spacing)
-                    gameoverBoxHeight += (vPixelSize * line.spacing);
-                else {                    
-                    let
-                        fontSize = Math.max(MIN_FONTSIZE,(vPixelSize * line.fontSize));
-                    line._font = fontSize+"px y224";
-                    line._fontSize = fontSize;
-                    gameoverBoxHeight+=fontSize; 
-                }
-                gameoverBoxHeight+=padding;
-            })
-            gameoverInnerHeight = gameoverBoxHeight+padding;
-            gameoverInnerY = gridY+Math.floor((fieldHeight-gameoverInnerHeight)/2);
-            gameoverInnerX = 0;
-            gameoverInnerWidth = canvasWidth;
-            gameoverLines.forEach(row=>row._y += gameoverInnerY);
 
-            gameoverHeight = gameoverInnerHeight+footerbarBorder*2;
-            gameoverX = gameoverInnerX;
-            gameoverY = gameoverInnerY-footerbarBorder;
-            gameoverWidth = canvasWidth;
-            gameoverTextX = Math.floor(canvasWidth/2);
-
+            resizeGameover(gameoverLines, padding,vPixelSize, footerbarBorder, canvasWidth);
+            resizeGameover(gameclearLines, padding,vPixelSize, footerbarBorder, canvasWidth);
+            
             // --- Cursor
             cursorSize = pixelSize * CURSOR_SIZE;
             cursorPulse = pixelSize * CURSOR_PULSE;
@@ -1522,416 +2382,11 @@ function Game() {
             schedule(()=>{ resize(times-1)},100);
     }
 
-    function generateNextBlocks() {
-        let
-            sparkledColumns = [],
-            nxt = autoDrops && isAutodropGarbage ? garbageNext : next,
-            failures = nxt.failureLimit,
-            amount = 0,
-            isSpecial = false,
-            amountLimit =  autoDrops ? autoDropAmount : nxt.getAmount();
-
-        do {
-            let
-                placed = false,
-                blockModel = nxt.get(),
-                coordinates = [],
-                block = new Block(0, 0, blockModel.color, blockModel.logicColor, blockModel.unshatterable, blockModel.solid, blockModel.unmovable, blockModel.block.pattern);
-
-            for (let i=0;i<=field.width-blockModel.block.kick;i++)
-                coordinates.push(i);
-
-            do {
-                block.x = random.removeElement(coordinates);
-                if (block.fitsInField(field, 0, 0)) {
-                    placed = true;
-                    field.addBlock(block);
-                    if (blockModel.special)
-                        isSpecial = true;
-
-                    if (!autoDrops)
-                        for (let y=0;y<block.pattern.length;y++)
-                            for (let x=0;x<block.pattern[y].length;x++)
-                                if (block.pattern[y][x]){
-                                    let
-                                        column = block.x + x,
-                                        color = colors[block.logicColor] ? colors[block.logicColor].color : lineClearColor;
-                                    if (!sparkledColumns[column]) {
-                                        sparkledColumns[column] = true;
-                                        for (let i=0;i<field.height;i++)
-                                            fieldEffects.addFlash(false, column, i, 100+(Math.random()*500), color.r, color.g, color.b);
-                                    }
-                            }
-                    break;
-                }
-            } while (coordinates.length);
-
-            if (placed) {
-                failures = nxt.failureLimit;
-                amount++;
-            } else {
-                failures--;
-                if (!failures)
-                    break;
-            }
-
-        } while (amount < amountLimit);
-
-        if (isSpecial)
-            audio.playAudio(audio.audio.special);
-
-        return amount;
-
-    }
-
-    function gameRemoveLines() {
-        field.removeLines(preparedLines);
-        schedule(gameTurn,50);
-    }
-
-    function playerDrop(force) {
-        if (movingBlock) {
-            let
-                timePassed = playE - nextBlockStart,
-                isValidMove = movingBlock.x != movingBlockStart;
-
-            if (normalMode && (timePassed < timeLimit) && isValidMove)
-                addScore(1);
-
-            field.addBlock(movingBlock);
-            movingBlock = 0;
-            shadowBlock = 0;
-            state = 0;
-            if (force || isValidMove)
-                gameTurn();
-        } else if (force) {
-            state = 0;
-            gameTurn();
-        }
-    }
-
-    function autoPlayerDrop(force) {
-        // --- If autodropping during player turn, instantly player drop
-        if (isInteractive)
-            playerDrop(true);
-        else
-            // --- Else schedules a player drop instead of making the player interactive at the end of the game turn
-            schedulePlayerDrop = true;
-    }
-
-    function explosionAtCell(cell, color, duration) {
-         for (let i=0;i<5;i++)
-            particles.addLinear(
-                duration,
-                color,
-                particleSizeLarge,
-                gridX+cell.x*cellWidth+hCellWidth,
-                gridY+cell.y*cellHeight+hCellHeight,
-                Math.random()*40-20,
-                Math.random()*40-20
-            );
-    }
-
-    function shatterEffectAtCell(cell) {
-        let
-            shatterEffectColor = colors[cell.logicColor] ? colors[cell.logicColor].shatterEffectColor : SHATTEREFFECT_COLOR;
-        overFieldEffects.addHilight(true, cell.x, cell.y, 800, shatterEffectColor.r, shatterEffectColor.g, shatterEffectColor.b, 20);
-        explosionAtCell(cell, shatterEffectColor, PARTICLE_DURATION);
-    }
-
-    function newLevel(priority, sound) {
-        if (level < levelCap) {
-            level++;
-            if (sound) {
-                audio.playAudio(audio.audio.newLevel);
-            }
-            setScoreComment(priority, "LEVEL "+level);
-        }
-    }
-
-    function runEvent(event, progressItem) {
-        // --- Add new incoming block
-        if (event.addIncoming)
-            next.addIncoming(progressItem.random.element(event.addIncoming));
-        // --- Change spawing amount
-        if (event.setBlocksPerDrop)
-            next.setAmount(event.setBlocksPerDrop);
-        // --- Change autofall
-        if (event.setTimeLimitIsFall !== undefined)
-            timeLimitIsFall = event.setTimeLimitIsFall;
-        // --- Change time limit speed
-        if (event.setTimeLimit !== undefined)
-            timeLimit = event.setTimeLimit;
-        // --- Change colors
-        if (event.setIdleStyle)
-            fieldEffects.setIdleColors(
-                event.setIdleStyle[0],
-                event.setIdleStyle[1],
-                event.setIdleStyle[2],
-                event.setIdleStyle[3],
-                event.setIdleStyle[4],
-                event.setIdleStyle[5]
-            );
-        // --- Change music
-        if (event.playMusic)
-            audio.mixerPlayMusic(audio.audio[event.playMusic]);
-        // --- Change background
-        if (event.setBackgroundAnimation !== undefined)
-            fadeToBackgroundAnimation(event.setBackgroundAnimation);
-        // --- Garbage limit
-        if (event.setGarbageLimit !== undefined)
-            garbageLimit = event.setGarbageLimit;
-        // --- Autodrops
-        if (event.autoDrop) {
-            autodropEnded = 0;
-            autoDrops = event.autoDrop;
-        }
-        if (event.autoDropAmount)
-            autoDropAmount = event.autoDropAmount;
-    }
-
-    function checkProgress(newLevel, newLine) {
-        // --- Timed events
-        gameMode.progress.forEach((events,id)=>{
-            let
-                progressItem = progress[id];
-            if (newLine)
-                progressItem.lines++;
-            for (let i=0;i<events.length;i++) {
-                let
-                    event = events[i];
-                if (
-                    (
-                        (event.afterLevel && (level > event.afterLevel)) ||
-                        (newLevel && (event.atLevel && (level == event.atLevel)))
-                    ) && (
-                        (!event.atNewLevel || (event.atNewLevel && newLevel))
-                    )
-                ) {
-                    if (!event.everyLines || (newLine && (progressItem.lines >= event.everyLines))) {
-                        progressItem.lines = 0;
-                        runEvent(event, progressItem);
-                    }
-                    break;
-                }
-            }
-        })
-    }
-
-    function gameTurn() {
-        isInteractive = false;
-        isPlayNotPaused = false;
-
-        if (normalMode)
-            nextBlockStart = playE;
-
-        let
-            movedCells = field.applyGravity();
-
-        if (movedCells.length) {
-            isPreviouslyMovedCells = true;
-            previouslyMovedCells = movedCells;
-            movedCells.forEach(cell=>{
-                fieldEffects.addFlash(true, cell.x, cell.y, 200, 255, 255, 255);
-            })
-            schedule(gameTurn,10);
-        } else {
-            if (!combo && isPreviouslyMovedCells) {
-                audio.playAudio(audio.audio.fall);
-                shakeYEnd = gameE + SHAKEDURATION_Y;
-                previouslyMovedCells.forEach(cell=>{
-                    for (let i=0;i<5;i++)
-                        particles.addFalling(
-                            PARTICLE_DURATION,
-                            colors[cell.logicColor] ? colors[cell.logicColor].particleColor : particlesFallColor,
-                            particleSize,
-                            gridX+cell.x*cellWidth+hCellWidth,
-                            gridY+cell.y*cellHeight+hCellHeight,
-                            10+Math.random()*3,
-                            0.05+(Math.random()*0.02),
-                            Math.random()-0.5,
-                            Math.random()*10
-                        );
-                })
-            }
-            isPreviouslyMovedCells = false;
-            preparedLines = field.prepareLines();
-            if (preparedLines.lines.length) {
-                let
-                    isNewLevel = false,
-                    shatterSfx = false,
-                    effectsCache = { shatteredColors:[], shatteredColumns:[] };
-                shakeXEnd = gameE + SHAKEDURATION_X;
-                preparedLines.lines.forEach((line,lid)=>{
-                    // --- Manage lines
-                    lines++;
-                    if (normalMode)
-                        if (level < levelCap) {
-                            linesToNextLevel--;
-                            if (linesToNextLevel<=0) {
-                                newLevel(true, true);
-                                isNewLevel = true;
-                                linesToNextLevel = linesPerLevel;
-                            }
-                        }
-
-                    // --- Check lines progress
-                    if (normalMode || vsYouMode)
-                        checkProgress(isNewLevel, true);
-
-                    // --- Manage score
-                    combo++;
-                    rowTextEffects[line.row] = { text:"CHAIN x"+combo, font:rowTextEffectFont, color:rowtextColor, shadowColor:rowtextColorShadow, speed:ROWTEXT_SPEED, delay:lid*ROWTEXT_DELAY, blur:rowTextBlur, slide:rowTextSlide };
-                    // --- Clearing lines with same logic color make a special block spawn
-                    for (let i=0;i<LOGICCOLORS;i++)
-                        if (line.logicColors[i] == field.width)
-                            next.addIncoming({
-                                special:true,
-                                color:i+2,
-                                logicColor:i,
-                                block:{ kick:1, pattern:[ [ 1 ] ]}
-                            });
-                });
-                // --- Manage cleared blocks
-                preparedLines.cells.forEach(cell=>{
-                    // --- Check cleared block special effects
-                    let
-                        effect = colors[cell.color];
-                    // --- Add score
-                    addScore(effect.score * (combo + Math.floor(level * levelMultiplierRatio)));
-                    // --- EFFECT: Shatter a color
-                    if ((effect.shatterColor!== undefined) && (!effectsCache.shatteredColors[effect.shatterColor])) {
-                        let
-                            shatteredCells = field.shatterColor(effect.shatterColor);
-                        shatteredCells.forEach(cell=>{
-                            shatterEffectAtCell(cell);
-                            shatterSfx = true;
-                        })
-                        effectsCache.shatteredColors[effect.shatterColor] = true;
-                    }
-                    // --- EFFECT: Shatter a column
-                    if ((effect.shatterColumn!== undefined) && (!effectsCache.shatteredColumns[cell.x])) {
-                        let
-                            shatteredCells = field.shatterColumn(cell.x);
-                        shatteredCells.forEach(cell=>{
-                            shatterEffectAtCell(cell);
-                            shatterSfx = true;
-                        })
-                        effectsCache.shatteredColors[effect.shatterColor] = true;
-                        // --- Hilight column
-                        for (let y=0;y<field.height;y++)
-                            overFieldEffects.addHilight(false, cell.x, y, 800, effect.effectColor.r, effect.effectColor.g, effect.effectColor.b, 20);
-                    }
-
-                    // --- Add cleared VFX
-                    overFieldEffects.addHilight(true, cell.x, cell.y, 400, lineClearColor.r, lineClearColor.g, lineClearColor.b, 20);
-                    explosionAtCell(cell, particlesLineClearColor, PARTICLE_DURATION_FAST);
-                })
-                if (shatterSfx)
-                    audio.playAudio(audio.audio.break);
-                audio.playAudio(audio.audio.line, false, 0, 1+Math.min(2,combo*0.2));
-                commitScore();
-                schedule(gameRemoveLines,300);
-            } else {
-                // --- End combo
-                commitScore();
-                if (vsYouMode && (combo > 1)) {
-                    let
-                        power = combo - 1;
-                    vsYouRecord.push([ playE-vsYouRecordStart, power ]);
-                    garbageTugOfWar -= power;
-                    vsYouRecordGarbage += power;
-                    incomingGarbage = Math.max(0, Math.min(garbageLimit, garbageTugOfWar));
-                }
-                combo = 0;
-                isGameOver = false;
-                // --- Timer management
-                if (vsYouMode) {
-                    // Timer is fully managaged by the timer itself
-                } else if (survivalMode) {
-                    if (autoDrops)
-                        nextBlockStart = playE;
-                    else if (autodropEnded == 2) {
-                        autodropEnded = 3;
-                        nextBlockStart = playE;
-                    }
-                } else
-                    nextBlockStart = autoDrops ? 0 : playE;
-                // --- Check warning bar and endgame
-                isWarning = false;
-                for (let y=0;y<warningRows;y++)
-                    if (isWarning)
-                        break;
-                    else for (let x=0;x<field.width;x++)
-                        if (field.isFieldFilled(x,y)) {
-                            if (y == 0)
-                                isGameOver = true;
-                            isWarning = true;
-                            break;
-                        }
-                if (isGameOver || (
-                    ((normalMode || vsYouMode) && !generateNextBlocks()) ||
-                    (survivalMode && autoDrops && !generateNextBlocks())
-                ))
-                    // --- End game
-                    gameOver();
-                else {
-                    // --- Continue
-                    if (isWarning)
-                        audio.playAudio(audio.audio.warning);
-                    if (autoDrops) {
-                        autoDrops--;
-                        if (!autoDrops)
-                            autodropEnded = 1;
-                        schedule(gameTurn,10);
-                    } else if (schedulePlayerDrop) {
-                        schedulePlayerDrop = false;
-                        playerDrop(true);
-                    } else {
-                        if (isAllClearTest) {
-                            let
-                                isAllClear = isAllClearTest;
-                            // --- Check for an all-clear
-                            for (let x=0;x<field.width;x++)
-                                if (field.isFieldFilled(x,lowestLine)) {
-                                    isAllClear = false;
-                                    break;
-                                }
-                            if (isAllClear) {
-                                setScoreComment(false, "ALL CLEAR!");
-                                audio.playAudio(audio.audio.perfect);
-                                addScore(level * field.width * 3);
-                                autodropEnded = 0;
-                                autoDrops = allClearAutoDrop;
-                                autoDropAmount = allClearAutoDropAmount;
-                                isAllClearTest = false;
-                                schedule(gameTurn,10);
-                            } else {
-                                isPlayNotPaused = true;
-                                isInteractive = true;
-                            }
-                        } else {
-                            isPlayNotPaused = true;
-                            isInteractive = true;
-                            isAllClearTest = true;
-                        }
-                    }
-                    if (autodropEnded == 1) {
-                        autodropEnded = 2;
-                        if (gameStarting) {
-                            vsYouRecordStart = playE;
-                            vsYouRecordGarbage = 0;
-                            gameStarting = false;
-                            setScoreComment(true, introText);
-                            audio.playMusic(audio.audio[nextMusic]);
-                        }
-                    }
-                }
-            }
-        }
-    }
-
     // --- Button controls
+
+    function isButtonOk(button) {
+        return (button == BUTTON_START || button == BUTTON_BACK || button == BUTTON_DRAG);
+    }
 
     function onButton(updown, button) {
         if (updown) {
@@ -1964,20 +2419,14 @@ function Game() {
                     }
                 }
             } else if (credits) {
-                switch (button) {
-                    case BUTTON_START:
-                    case BUTTON_DRAG:
-                    case BUTTON_BACK: {
-                        endCredits();
-                        break;
-                    }
-                }
-            } else if (isGameOver && (gameE > enableHitAt) && (button == BUTTON_START || button == BUTTON_BACK)) {
+                if (isButtonOk(button))
+                    endCredits();
+            } else if (isGameOver && (gameE > enableHitAt) && isButtonOk(button)) {
                 endRun();
             } else if (gameState === GAMESTATE_PLAY) {
                 if ((state == 1) && isPointerMode) {
                     playerDrop();
-                } else if (!isGameOver && (button == BUTTON_BACK) )
+                } else if (isGameRunning && (button == BUTTON_BACK) )
                     gotoPause(); 
                 else {
                     let
@@ -2036,6 +2485,10 @@ function Game() {
                             }
                             break;
                         }
+                        case BUTTON_START:{
+                            doQuickDrop();
+                            break;
+                        }
                         case BUTTON_DRAG:{
                             if (isInteractive && (state == 0)) {
                                 let
@@ -2088,11 +2541,19 @@ function Game() {
         if (currentMenu) {
             menuMaySelect = true;
             menuDragY = pointerY;
-            menuDragE = gameE;
+            menuDragE = lastE;
         } else if (credits) {
             endCredits();
         } else if (gameState === GAMESTATE_PLAY) {
-            if (!isGameOver && ((pointerX < boardX) || (pointerX > boardRight) || (pointerY < boardY) || (pointerY > footerbarInnerY)))
+            if (
+                isQuickDropAvailable &&
+                (pointerX > quickDropX) &&
+                (pointerX < quickDropX1) &&
+                (pointerY > quickDropY) &&
+                (pointerY < quickDropY1)
+            )
+                doQuickDrop();
+            else if (isGameRunning && ((pointerX < boardX) || (pointerX > boardRight) || (pointerY < boardY) || (pointerY > footerbarInnerY)))
                 gotoPause(); 
             else if (isInteractive) {
                 if ((state == 1) && isButtonMode) {
@@ -2213,7 +2674,7 @@ function Game() {
 
     canvas.onpointerleave = canvas.onpointerup = (e)=>{
         if (menuDragE) {
-            if (currentMenu && menuMaySelect && (gameE - menuDragE < MENU_TAPTIMING))
+            if (currentMenu && menuMaySelect && (lastE - menuDragE < MENU_TAPTIMING))
                 currentMenu.select();
             menuDragE = 0;
         } else {
@@ -2379,6 +2840,12 @@ function Game() {
             canvas.msRequestFullscreen();
     }
 
+    // --- Game state
+
+    window.onbeforeunload = ()=>{
+        quickSave();
+    }
+
     // --- Settings
 
     function saveSettings() {
@@ -2414,6 +2881,9 @@ function Game() {
         if (settings.fullscreen === undefined)
             settings.fullscreen = false;
 
+        if (settings.saveState === undefined)
+            settings.saveState = 1;
+
         if (!settings.scale)
             settings.scale = 1;
 
@@ -2423,7 +2893,7 @@ function Game() {
         if (settings.bganimations === undefined)
             settings.bganimations = true;
 
-        GAMEMODES.forEach((mode,id)=>{
+        GAMEMODES.list.forEach((mode,id)=>{
             if (!settings.stats[mode.id])
                 settings.stats[mode.id] = {};
             if (settings.stats[mode.id].highScore === undefined)
@@ -2440,6 +2910,9 @@ function Game() {
             DEVICE.initialize();
             canvas.style.backgroundColor = "#000";
             document.body.appendChild(canvas);
+            GAMEPAD.forEach((control,id)=>{
+                gamepadButtons[id] = false;
+            });
 
             // --- Initialize audio
             audio = new AudioPlayer({
@@ -2453,7 +2926,7 @@ function Game() {
 
             // --- Prepare game
             loadSettings();
-            newGame(GAMEMODES[GAMEMODE_DEFAULT]);
+            newGame(GAMEMODES.list[GAMEMODE_DEFAULT]);
             applySettings();
             renderScreen();
 
@@ -2477,6 +2950,7 @@ function Game() {
                 { id:"track5", mod:"audio/music/acid_attack.xm" },
                 { id:"track6", mod:"audio/music/funk_is_a_religion.xm" },
                 { id:"track7", mod:"audio/music/ying_yang.xm" },
+                { id:"track8", mod:"audio/music/chromag_-_rainy_day.xm" },
             ],(a, b)=>{
                 loadingTotal = a;
                 loadingLoaded = b;
@@ -2485,7 +2959,22 @@ function Game() {
                     Installer.check(()=>{
                         showInstaller = true;
                     });
-                gotoGameState(GAMESTATE_TITLE);
+
+                if (settings.saveState && localStorage[GAME_STATE_LOCALSTORAGE]) {
+                    let
+                        data;
+
+                    try {
+                        data = JSON.parse(localStorage[GAME_STATE_LOCALSTORAGE]);
+                    } catch (e) {
+                        data = 0;
+                    }
+
+                    if (!data || !restoreGame(data))
+                        gotoGameState(GAMESTATE_TITLE);
+
+                } else
+                    gotoGameState(GAMESTATE_TITLE);
             });
         }
     }

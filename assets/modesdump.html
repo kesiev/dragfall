@@ -36,6 +36,27 @@
         return "<div style='display:inline-block;width:8px;height:8px;background-color:#000;border:3px solid "+border+";box-shadow:0 0 5px #000'></div>";
     }
 
+    function dumpGameOver(gameover) {
+        let
+            text = gameover.map(line=>{
+                if (line.text)
+                    return "<tt>"+line.text+"</tt>";
+                if (line.highScore)
+                    return "<tt>"+line.highScore+"</tt>";
+                else if (line.score)
+                    return "<i>(score)</i>";
+                else if (line.lines)
+                    return "<i>(lines)</i>";
+                else if (line.level)
+                    return "<i>(level)</i>";
+                else if (line.spacing)
+                    return "";
+                else
+                    return "???";
+            });
+            return "<div style='display:inline-block;border:1px solid #000;padding:5px;text-align:center;'>"+text.join("<br>")+"</div>";
+    }
+
     function dumpPattern(pattern) {
         let
             out="<table style='empty-cells:show;margin:0 5px;display:inline-block' cellpadding=0 cellspacing=0>";
@@ -79,14 +100,14 @@
             out = [];
 
         // --- Start
-        if (action.survivalMode !== undefined)
-            out.push([ "<span style='color:red'>Game mode</span>", "SURVIVAL" ]);
-        if (action.vsYouMode !== undefined)
-            out.push([ "<span style='color:red'>Game mode</span>", "VS. YOU" ]);
+        if (action.model !== undefined)
+            out.push([ "<span style='color:red'>Game mode</span>", action.model ]);
         if (action.introText !== undefined)
             out.push([ "Intro", "<tt>"+action.introText+"</tt>" ]);
         if (action.fieldWidth !== undefined)
             out.push([ "Field size", action.fieldWidth+"&times;"+action.fieldHeight ]);
+        if (action.colorGems !== undefined)
+            out.push([ "Color gems", action.colorGems ? "Enabled" : "Disabled" ]);
         if (action.blocks !== undefined)
             out.push([ "Blocks", action.blocks.map(b=>dumpPattern(b.pattern)).join(" ") ]);
 
@@ -96,7 +117,6 @@
             out.push([ "Vs. You punishment track", action.vsYouPunishmentTrack.map(a=>a[1]+" garbage after "+(a[0]/1000)+"s").join(", ") ]);
         if (action.vsYouTransitions !== undefined)
             out.push([ "Vs. You transitions", action.vsYouTransitions.map((a,id)=>"<br><div style='display:inline-block;border:1px solid #000;padding:5px;'><b>Phase "+(id+1)+":</b><br>"+dumpAction(a)+"</div>").join("") ]);
-
 
         if (action.garbageBlocks !== undefined)
             out.push([ "Garbage blocks", action.garbageBlocks.map(b=>dumpPattern(b.pattern)).join(" ") ]);
@@ -120,6 +140,12 @@
         if (action.allClearAutoDrop !== undefined)
             out.push([ "All Clear autodrop", action.allClearAutoDropAmount+" block(s) for "+action.allClearAutoDrop+" times ("+(action.allClearAutoDrop*action.allClearAutoDropAmount)+" block(s))" ]);
 
+        if (action.quickDropActive !== undefined)
+            out.push([ "Quick drop", action.quickDropActive ? "Available until row "+action.quickDropThreshold : "Not available" ]);
+        if (action.quickDropAutoDrops !== undefined)
+            out.push([ "Quick drop effect", action.quickDropAutoDropsAmount+" block(s) for "+action.quickDropAutoDrops+" times ("+(action.quickDropAutoDrops*action.quickDropAutoDropsAmount)+" block(s))" ]);
+        if (action.quickDropColor !== undefined)
+            out.push([ "Quick drop button", "Enabled: "+createColorSample(createRGB(action.quickDropColor), createRGB(action.quickDropColor), createRGB(action.quickDropFontColor), createRGB(action.quickDropFontColor) )+" / Disabled: "+createColorSample(createRGB(action.quickDropDisabledColor), createRGB(action.quickDropDisabledColor), createRGB(action.quickDropFontDisabledColor), createRGB(action.quickDropFontColor) )+" / Shadow: "+createColorBox(createRGB(action.quickDropShadowColor)) ]);
         
         if (action.everyLines !== undefined)
             out.push([ "<span style='color:#f00'>Every lines</span>", action.everyLines ]);
@@ -127,8 +153,17 @@
             out.push([ "Footer bar", createColorSample(action.footerbarColorBorder, action.footerbarColor, createRGB(action.footerbarColorText)) ]);
         if (action.gameoverColor !== undefined)
             out.push([ "Gameover box", createColorSample(createRGB(action.gameoverColorBorder), createRGB(action.gameoverColor), createRGB(action.footerbarColorText)) ]);
+        if (action.gameoverSound !== undefined)
+            out.push([ "Gameover sound", action.gameoverSound ]);
+        if (action.gameoverLines)
+            out.push([ "Game over", "<br>"+dumpGameOver(action.gameoverLines) ]);
+        if (action.gameclearLines)
+            out.push([ "Game clear", "<br>"+dumpGameOver(action.gameclearLines) ]);
+
         if (action.timebarBasicHeight !== undefined)
-            out.push([ "Timebar", action.timebarBasicHeight+"px Basic: "+createColorBox(createRGB(action.timebarColor))+ "/ Critical:"+createColorBox(createRGB(action.timebarColorCritical)) ]);
+            out.push([ "Timebar", action.timebarBasicHeight ? action.timebarBasicHeight+"px Basic: "+createColorBox(createRGB(action.timebarColor))+ "/ Critical:"+createColorBox(createRGB(action.timebarColorCritical)) : "None" ]);
+        if (action.timeLimitPoints !== undefined)
+            out.push([ "Time limit bonus", action.timeLimitPoints+"pts." ]);
         if (action.cursorColor)
             out.push([ "Cursor color", "Moving: "+createCursorSample(action.cursorColor)+" / Drag: "+createCursorSample(action.cursorColorDrag) ]);
         if (action.lineClearColor !== undefined)
@@ -137,26 +172,6 @@
             out.push([ "Line clear text", createColorBox(createRGB(action.rowtextColor))+" / Shadow: "+createColorBox(createRGB(action.rowtextColorShadow)) ]);
         if (action.particlesLineClearColor)
             out.push([ "Particles", "Line clear: "+createColorBox(createRGB(action.particlesLineClearColor)+" / Fall: "+action.particlesFallColor ) ]);
-        if (action.gameoverLines) {
-            let
-                text = action.gameoverLines.map(line=>{
-                    if (line.text)
-                        return "<tt>"+line.text+"</tt>";
-                    if (line.highScore)
-                        return "<tt>"+line.highScore+"</tt>";
-                    else if (line.score)
-                        return "<i>(score)</i>";
-                    else if (line.lines)
-                        return "<i>(lines)</i>";
-                    else if (line.level)
-                        return "<i>(level)</i>";
-                    else if (line.spacing)
-                        return "";
-                    else
-                        return "???";
-                });
-            out.push([ "Game over", "<br><div style='display:inline-block;border:1px solid #000;padding:5px;text-align:center;'>"+text.join("<br>")+"</div>" ]);
-        }
 
         // --- Ongoing
         if (action.setBlocksPerDrop !== undefined)
@@ -197,7 +212,7 @@
             levelHtml,
             html = "";
 
-        modes.forEach(mode=>{
+        modes.list.forEach(mode=>{
             let
                 afterLevelBg = [];
             html += "<h1>"+mode.label+"</h1><table><tr style='background-color:#ccc'><th>Level</th>";
