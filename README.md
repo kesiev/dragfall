@@ -114,6 +114,26 @@ The quick save and quick drop features had a specific purpose: implement the req
     <p>40-Lines mode</p>
 </div>
 
+#### BragBoard&trade;
+
+Our trusty Preuk asked on Discord for a highscore page to list scores from all modes in a single ~~ego trip screenshot~~ screen. Since he's a long-time good cyberfriend, I've created a whole highscore-sharing system instead, inspired by [Rewtro](https://github.com/kesiev/rewtro): introducing **BragBoard&trade;**!
+
+<div align="center" style="margin:60px 0">
+    <p><img src="markdown/bragcard.png"></p>
+    <p>My launch day BragCard&trade;! In my defense, I declare that I cleared my highscores and played each mode just once.</p>
+</div>
+
+You can ~~brag~~ share your highscores with friends via [BragCards](markdown/bragcard.png) (Old-school forums inspired images), [BragLinks](https://www.kesiev.com/dragfall/#BRGQlJHOjAuMTpEUkY6MC4zLjI7S2VzaWVWOjE3ODU0MTYwMDM2MjA7U1QvMS8zMDA1OjQwLzEvMTE1ODE2LjU5OTk5OTk5OTkyOkdULzEvNDIzOTpCVS8xLzM1NDpZWS8xLzIwNzE6Q0gvMS8zOTE7NTA4NzM0NTc1NDIxMzYzOA==) (Plain weblinks), or **BragQRs** (QR-Codes displayed in-game).
+
+Shared scores (called Brags) are just aside your regular highscores. On the mode selection screen, you can see who is bragging about their highscore. If you've beaten him, it will be shamefully grayed out, so you can _feed your ego_ every time you see that.
+
+<div align="center" style="margin:60px 0">
+    <p><img src="markdown/title3.png"></p>
+    <p>"Mobile" bragged his Gatling Mode score!</p>
+</div>
+
+Ah, bragging to your friends about your scores. Now it's truly summer.
+
 ### The animations
 
 On mobile, there is almost no room for background animations as the field covers the entire screen. On desktop, instead, there is a lot of space around it - as for most of the block stacking games - so I started looking for some abstract psychedelic animations to show in the background.
