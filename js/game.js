@@ -1694,6 +1694,14 @@ function Game() {
         else
             localStorage[GAME_STATE_LOCALSTORAGE] = JSON.stringify(latestGameSerialize);
     }
+
+    function autoSave() {
+        if (settings.saveState) {
+            latestGameSerialize = serializeGame();
+            if (settings.saveState == 2)
+                quickSave();
+        }
+    }
     
     function resetHighScore(mode) {
         if (!settings.stats[mode.id])
@@ -1867,6 +1875,8 @@ function Game() {
         isWarning = false;
         isPlayNotPaused = false;
         isGameRunning = false;
+        if (settings.saveState == 2)
+            quickSave();
         resetScheduler();
     }
 
@@ -2319,21 +2329,13 @@ function Game() {
                             } else {
                                 isPlayNotPaused = true;
                                 isInteractive = true;
-                                if (settings.saveState) {
-                                    latestGameSerialize = serializeGame();
-                                    if (settings.saveState == 2)
-                                        quickSave();
-                                }
+                                autoSave();
                             }
                         } else {
                             isPlayNotPaused = true;
                             isInteractive = true;
                             isAllClearTest = true;
-                            if (settings.saveState) {
-                                latestGameSerialize = serializeGame();
-                                if (settings.saveState == 2)
-                                    quickSave();
-                            }
+                            autoSave();
                         }
                     }
                     if (autodropEnded == 1) {
