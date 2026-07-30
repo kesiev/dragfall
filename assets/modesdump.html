@@ -215,7 +215,7 @@
         modes.list.forEach(mode=>{
             let
                 afterLevelBg = [];
-            html += "<h1>"+mode.label+"</h1><table><tr style='background-color:#ccc'><th>Level</th>";
+            html += "<h1>"+mode.label+" v"+mode.version+" ("+mode.id+" - "+mode.shortId+")</h1><table><tr style='background-color:#ccc'><th>Level</th>";
             for (let i=0;i<mode.progress.length;i++)
                 html+="<th>Track "+i+"</th>";
             html+="</tr><tr><td style='border-bottom:1px solid #000' colspan='"+(mode.progress.length+1)+"'>";

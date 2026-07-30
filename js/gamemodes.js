@@ -286,6 +286,8 @@ function GameModes() {
         list:[
             {
                 id:"standard",
+                version:1,
+                shortId:"ST",
                 label:"Standard mode",
                 initialize:{
                     model:"standard",
@@ -490,6 +492,8 @@ function GameModes() {
                 ]
             },{
                 id:"40lines",
+                version:1,
+                shortId:"40",
                 label:"40-lines mode",
                 initialize:{
                     model:"timed",
@@ -553,6 +557,8 @@ function GameModes() {
                 ]
             },{
                 id:"gatling",
+                version:1,
+                shortId:"GT",
                 label:"Gatling mode",
                 initialize:{
                     model:"standard",
@@ -676,6 +682,8 @@ function GameModes() {
                 ]
             },{
                 id:"burst",
+                version:1,
+                shortId:"BU",
                 label:"Burst mode",
                 initialize:{
                     model:"survival",
@@ -824,6 +832,8 @@ function GameModes() {
                 ]
             },{
                 id:"yinyang",
+                version:1,
+                shortId:"YY",
                 label:"Yinyang mode",
                 initialize:{
                     model:"vsYou",
@@ -917,6 +927,8 @@ function GameModes() {
                 ],
             },{
                 id:"chill",
+                version:1,
+                shortId:"CH",
                 label:"Chill mode",
                 initialize:{
                     model:"chill",

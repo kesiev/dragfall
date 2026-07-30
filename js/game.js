@@ -16,11 +16,12 @@ function Game() {
         GAME_LOCALSTORAGE = "_DRAGFALL",
         GAME_STATE_LOCALSTORAGE = "_DRAGFALL_S",
         GAME_NAME = "DRAGFALL",
-        GAME_VERSION = "0.3.1",
+        GAME_VERSION = "0.3.2",
         GAME_FOOTER = [ "Drag up-down", "Hit to select", "v"+GAME_VERSION+" by KesieV" ],
         GAME_CREDITS_MUSIC = "track2",
         GAME_GITHUB = "http://github.com/kesiev/dragfall",
         GAME_HOME = "https://www.kesiev.com/dragfall",
+        GAME_SHORTHOME = "kesiev.com/dragfall",
         GAME_DISCORD = "https://discord.gg/TeAWvnuGku",
         GAME_CREDITS = [
             "< "+GAME_NAME+" >",
@@ -122,6 +123,9 @@ function Game() {
             "",
             "jsxm",
             "https://github.com/a1k0n/jsxm",
+            "",
+            "QR-Code generator",
+            "https://github.com/kazuhikoarase/qrcode-generator",
             "","",
             "< THANKS >",
             "",
@@ -129,15 +133,17 @@ function Game() {
             "Preuk",
             "Dymonika",
         ],
-        TITLE_START = "HIT ANYWHERE TO START",
+        // --- Title screen
         TITLE_COLOR = "#FFF",
         TITLE_COLOR_SHADOW = "#F00",
+        TITLE_SHADOWCOLOR = "#000",
+        // --- Menus
+        MENU_FONTSIZE = 9,
+        MENU_TAPTIMING = 500,
+        // --- Main menu
         MAINMENU_COLOR_BORDER = "#c33",
         MAINMENU_COLOR = "#400",
         MAINMENU_COLOR_TEXT = { r:255, g:255, b:255 },
-        MENU_FONTSIZE = 9,
-        MENU_TAPTIMING = 500,
-        TITLE_SHADOWCOLOR = "#000",
         // --- Credits
         CREDITS_COLOR = "#FFF",
         CREDITS_COLOR_SHADOW = "#000",
@@ -191,6 +197,7 @@ function Game() {
         GAMESTATE_LOADING = 0,
         GAMESTATE_TITLE = 1,
         GAMESTATE_PLAY = 2,
+        GAMESTATE_BRAGQR = 3,
         // --- Quick save
         QUICKSAVE_MODES = [ "OFF", "ON CLOSE", "ALWAYS" ],
         // --- Play mode
@@ -254,7 +261,25 @@ function Game() {
         BACKGROUND_QUALITY = [ { label:"Low", value:20 }, { label:"Medium", value:10 }, { label:"High", value:5 }, { label:"Very high", value:1 } ],
         BACKGROUND_FADETIME = 1000,
         // --- Game data
-        LOGICCOLORS = 2;
+        LOGICCOLORS = 2,
+        // --- Notifications
+        NOTIFICATION_FONTSIZE = 5,
+        NOTIFICATION_COLOR = { r:255, g:255, b:255 },
+        NOTIFICATION_TEXTCOLOR = { r:0, g:0, b:0 },
+        NOTIFICATION_SHADOWCOLOR = { r:51, g:51, b:51 },
+        // --- BragBoard
+        BRAGBOARD = new BragBoard({
+            gameId:"DRF",
+            gameStorage:GAME_LOCALSTORAGE,
+            gameName:GAME_NAME,
+            gameVersion:GAME_VERSION,
+            gameModes:GAMEMODES,
+            gameHome:GAME_SHORTHOME
+        }),
+        BRAGBOARD_COLOR = "#7300ff",
+        BRAGBOARD_TEXTCOLOR = { r:255, g:255, b:255 },
+        BRAGBOARD_BEATENCOLOR = "#333",
+        BRAGBOARD_BEATENTEXTCOLOR = "#999";
     let
         self,
         SCALE = 1,
@@ -374,6 +399,8 @@ function Game() {
         quickDropE, quickDropSlide,
         // --- Score comment
         scoreComment,
+        // --- Notifications
+        notification,
         // --- Game over
         gameoverColor, gameoverColorBorder,
         gameoverStart,
@@ -383,7 +410,7 @@ function Game() {
         footerX, footerRows = [], footerFont,
         // --- Menu
         currentMenu,
-        menuFontSize, menuFont, menuPadding, menuLineSpacing,
+        menuFontSize, menuSmallFontSize, menuFont, menuPadding, menuLineSpacing,
         menuX, menuY, menuWidth, menuHeight,
         menuDragSize, menuDragY, menuDragE, menuMaySelect,
         wheelTimestamp = 0,
@@ -403,6 +430,10 @@ function Game() {
         particlesLineClearColor,
         particlesFallColor,
         particles = new Particles(),
+        // --- Notifications
+        notificationX, notificationY, notificationWidth, notificationHeight, notificationFont,
+        // --- BragBoard
+        bragWidth, bragHeight, bragX, bragY, bragTextY, bragQr, bragQrX, bragQrY, bragQrWidth, bragQrHeight,
         // --- Screen resize triggers
         oldClientWidth, oldClientHeight,
         // --- Screen canvas
@@ -718,6 +749,7 @@ function Game() {
 
             mainMenu.push({
                 label:label,
+                brag:BRAGBOARD.getBrag(mode.shortId, settings.stats[mode.id].highScore),
                 onSelect:(menu)=>{
                     menu.disable();
                     settings.lastMode = mode.id;
@@ -740,10 +772,118 @@ function Game() {
         currentMenu = new Menu(mainMenu, selectedOption, defaultMenuEffect, 3, MAINMENU_COLOR, MAINMENU_COLOR_BORDER, MAINMENU_COLOR_TEXT, TITLE_SHADOWCOLOR);
     }
 
+    function gotoBragBoardMenu(parentOption) {
+        let
+            options = [
+                {
+                    label:[ "Change name", BRAGBOARD.getName() ],
+                    onSelect:(menu, option)=>{
+                        let
+                            newName;
+
+                        settings.music = !settings.music;
+                        defaultMenuEffect();
+
+                        newName = prompt("Insert your BragBoard nickname!", BRAGBOARD.getName());
+                        if (newName) {
+                            BRAGBOARD.setName(newName);
+                            gotoBragBoardMenu(parentOption);
+                        } else
+                            menu.enable();
+                    }
+                },{
+                    label:[ "Copy BragCard" ],
+                    onSelect:(menu, option)=>{
+                        menu.disable();
+                        defaultMenuEffect();
+                        BRAGBOARD.imageCopy(settings.stats,(success)=>{
+                            menu.enable();
+                            if (success)
+                                setNotification("Image copied");
+                            else
+                                setNotification("Something went wrong!");
+                        })
+                    }
+                },{
+                    label:[ "Copy BragLink" ],
+                    onSelect:(menu, option)=>{
+                        menu.disable();
+                        defaultMenuEffect();
+                        BRAGBOARD.linkCopy(settings.stats,(success)=>{
+                            menu.enable();
+                            if (success)
+                                setNotification("Link copied");
+                            else
+                                setNotification("Something went wrong!");
+                        })
+                    }
+                },{
+                    label:[ "Download BragCard" ],
+                    onSelect:(menu, option)=>{
+                        menu.disable();
+                        defaultMenuEffect();
+                        BRAGBOARD.imageDownload(settings.stats,(success)=>{
+                            menu.enable();
+                            if (success)
+                                setNotification("Downloading");
+                            else
+                                setNotification("Something went wrong!");
+                        })
+                    }
+                },{
+                    label:[ "Show BragLink" ],
+                    onSelect:(menu, option)=>{
+                        menu.disable();
+                        defaultMenuEffect();
+                        newName = prompt("This is your BragLink. Share it with your friends to challenge them!", BRAGBOARD.linkGet(settings.stats));
+                        menu.enable();
+                    }
+                },{
+                    label:[ "Show BragQr" ],
+                    onSelect:(menu, option)=>{
+                        menu.disable();
+                        defaultMenuEffect();
+                        bragQr = BRAGBOARD.qrGet(settings.stats, 3, 8);
+                        gotoGameState(GAMESTATE_BRAGQR);
+                        currentMenu = 0;
+                    }
+                },{
+                    label:[ "Clear Brags" ],
+                    onSelect:(menu, option)=>{
+                        menu.disable();
+                        defaultMenuEffect();
+                        if (confirm("Do you want to clear all Brags? This action cannot be undone.")) {
+                            BRAGBOARD.clear();
+                            setTimeout(()=>{
+                                setNotification("Brags cleared");
+                                menu.enable();
+                            },1000);
+                        } else
+                            menu.enable();
+                    }
+                },{
+                    label:[ "BACK" ],
+                    isBackOption:true,
+                    onSelect:(menu, option)=>{
+                        audio.playAudio(audio.audio.fall);
+                        gotoOptions(parentOption);
+                    }
+                }
+            ];
+
+        currentMenu = new Menu(options, 0, defaultMenuEffect, 2, MAINMENU_COLOR, MAINMENU_COLOR_BORDER, MAINMENU_COLOR_TEXT, TITLE_SHADOWCOLOR);
+    }
+
     function gotoOptions(option) {
         let
             options = [
                 {
+                    label:[ "BragBoard", "Share scores!" ],
+                    onSelect:(menu, option)=>{
+                        defaultMenuEffect();
+                        gotoBragBoardMenu(option);
+                    }
+                },{
                     label:[ "Music", settings.music ? "ON" : "OFF" ],
                     onSelect:(menu, option)=>{
                         settings.music = !settings.music;
@@ -753,7 +893,7 @@ function Game() {
                         gotoOptions(option);
                     }
                 },{
-                    label:[ "SFX", settings.sfx ? "ON" : "OFF" ],
+                    label:[ "Sfx", settings.sfx ? "ON" : "OFF" ],
                     onSelect:(menu, option)=>{
                         settings.sfx = !settings.sfx;
                         defaultMenuEffect();
@@ -762,7 +902,7 @@ function Game() {
                         gotoOptions(option);
                     }
                 },{
-                    label:[ "FULLSCREEN", settings.fullscreen ? "ON" : "OFF" ],
+                    label:[ "Fullscreen", settings.fullscreen ? "ON" : "OFF" ],
                     onSelect:(menu, option)=>{
                         settings.fullscreen = !settings.fullscreen;
                         if (settings.fullscreen)
@@ -773,7 +913,7 @@ function Game() {
                         gotoOptions(option);
                     }
                 },{
-                    label:[ "SCALE", "x"+settings.scale ],
+                    label:[ "Scale", "x"+settings.scale ],
                     onSelect:(menu, option)=>{
                         settings.scale++;
                         if (settings.scale > 3)
@@ -784,7 +924,7 @@ function Game() {
                         gotoOptions(option);
                     }
                 },{
-                    label:[ "ANIMATIONS", settings.bganimations ? "ON" : "OFF" ],
+                    label:[ "Animations", settings.bganimations ? "ON" : "OFF" ],
                     onSelect:(menu, option)=>{
                         settings.bganimations = !settings.bganimations;
                         defaultMenuEffect();
@@ -794,7 +934,7 @@ function Game() {
                     }
                 },{
                     
-                    label:[ "BG QUALITY", BACKGROUND_QUALITY[settings.bgquality].label ],
+                    label:[ "BG Quality", BACKGROUND_QUALITY[settings.bgquality].label ],
                     onSelect:(menu, option)=>{
                         settings.bgquality = (settings.bgquality+1)%BACKGROUND_QUALITY.length;
                         defaultMenuEffect();
@@ -803,13 +943,30 @@ function Game() {
                         gotoOptions(option);
                     }
                 },{
-                    label:[ "QUICK SAVE", QUICKSAVE_MODES[settings.saveState]],
+                    label:[ "Quick save", QUICKSAVE_MODES[settings.saveState]],
                     onSelect:(menu, option)=>{
                         settings.saveState = (settings.saveState+1)%QUICKSAVE_MODES.length;
                         defaultMenuEffect();
                         saveSettings();
                         applySettings();
                         gotoOptions(option);
+                    }
+                },{
+                    label:[ "Clear scores" ],
+                    onSelect:(menu, option)=>{
+                        defaultMenuEffect();
+                        menu.disable();
+                        if (confirm("Do you want to delete all your high scores? This action cannot be undone.")) {
+                            GAMEMODES.list.forEach((mode,id)=>{
+                                resetHighScore(mode);
+                            })
+                            saveSettings();
+                            setTimeout(()=>{
+                                setNotification("Scores cleared");
+                                menu.enable();
+                            },1000);
+                        } else
+                            menu.enable();
                     }
                 }
             ];
@@ -1004,6 +1161,10 @@ function Game() {
                         ctx.fillText(GAME_FOOTER[i], footerX, footerRows[i]);
                     })
                 }
+                break;
+            }
+            case GAMESTATE_BRAGQR:{
+                ctx.drawImage(bragQr, bragQrX, bragQrY, bragQrWidth, bragQrHeight);
                 break;
             }
             case GAMESTATE_PLAY:{
@@ -1382,7 +1543,15 @@ function Game() {
 
         // --- Menu
         if (currentMenu)
-            currentMenu.render(canvasWidth, canvasHeight, e, ctx, menuFont, menuFontSize, scoreBlur, menuLineSpacing, menuPadding, menuX, menuY, menuWidth, menuHeight);
+            currentMenu.render(
+                canvasWidth, canvasHeight, e, ctx,
+                menuFont, menuSmallFont, menuFontSize, menuSmallFontSize,
+                scoreBlur, menuLineSpacing, menuPadding,
+                menuX, menuY, menuWidth, menuHeight,
+                bragX, bragY, bragWidth, bragHeight, bragTextY,
+                BRAGBOARD_COLOR, BRAGBOARD_TEXTCOLOR,
+                BRAGBOARD_BEATENCOLOR, BRAGBOARD_BEATENTEXTCOLOR
+            );
 
         // --- Fade in/out
         if (isTransitionState) {
@@ -1428,6 +1597,11 @@ function Game() {
             }
         }
 
+        if (notification) {
+            if (TextSpark(ctx, e, scoreX, scoreY, notification))
+                notification = 0;
+        }
+
         requestAnimationFrame(renderScreen);
     }
 
@@ -1454,6 +1628,11 @@ function Game() {
     function setScoreComment(force, text) {
         if (force || !scoreComment)
             scoreComment = { text:text, font:scoreFont, color:footerbarColorText, shadowColor:rowtextColorShadow, speed:COMMENT_SPEED, blur:rowTextBlur, slide:rowTextSlide, delay:0 };
+    }
+
+    // --- Notifications
+    function setNotification(text) {
+        notification = { text:text, font:notificationFont, color:NOTIFICATION_TEXTCOLOR, shadowColor:NOTIFICATION_SHADOWCOLOR, speed:COMMENT_SPEED, blur:rowTextBlur, slide:rowTextSlide, delay:0, backgroundColor:NOTIFICATION_COLOR, backgroundX:notificationX, backgroundY:notificationY, backgroundWidth:notificationWidth, backgroundHeight:notificationHeight,  };
     }
 
     // --- Helpers
@@ -1514,6 +1693,12 @@ function Game() {
             delete localStorage[GAME_STATE_LOCALSTORAGE];
         else
             localStorage[GAME_STATE_LOCALSTORAGE] = JSON.stringify(latestGameSerialize);
+    }
+    
+    function resetHighScore(mode) {
+        if (!settings.stats[mode.id])
+            settings.stats[mode.id] = {};
+        settings.stats[mode.id].highScore = 0;
     }
 
     // --- Game flow
@@ -1669,6 +1854,11 @@ function Game() {
         isTransitionState = 1;
         transitionE = lastE;
         nextGameState = state;
+    }
+
+    function goBackTitle() {
+        if (!isTransitionState)
+            gotoGameState(GAMESTATE_TITLE);
     }
 
     function endGame() {
@@ -2173,6 +2363,7 @@ function Game() {
             otherPixelSize,
             footerbarBorder,
             scoreFontSize,
+            notificationFontSize,
             titleFontSize,            
             footerFontSize,
             rowTextEffectFontSize,
@@ -2279,6 +2470,14 @@ function Game() {
             scoreFont = scoreFontSize+"px y224";
             scoreBlur = pixelSize * 2;
 
+            // --- Notifications
+            notificationFontSize = Math.max(MIN_FONTSIZE,(vPixelSize * NOTIFICATION_FONTSIZE));
+            notificationFont = notificationFontSize+"px y224";
+            notificationX = 0;
+            notificationY = footerbarY;
+            notificationWidth = canvasWidth;
+            notificationHeight = footerbarHeight;
+
             // --- Delta score
             deltaScoreEffectX = scoreX;
             deltaScoreEffectY = footerbarY;
@@ -2351,13 +2550,26 @@ function Game() {
             // --- Menu
             menuHeight = Math.floor(canvasHeight/4);
             menuFontSize = Math.max(MIN_FONTSIZE,Math.floor(menuHeight/12));
+            menuSmallFontSize = Math.max(MIN_FONTSIZE,Math.floor(menuFontSize*0.7));
             menuFont = menuFontSize+"px y224";
+            menuSmallFont = menuSmallFontSize+"px y224";
             menuX = 0;
             menuY = Math.floor((canvasHeight-menuHeight)*0.6);
             menuWidth = canvasWidth;
             menuPadding = padding;
             menuDragSize = Math.ceil(Math.min(canvasWidth, canvasHeight)/10);
             menuLineSpacing = pixelSize * 4;
+
+            // --- Bragboard
+            bragWidth = menuSmallFontSize*25;
+            bragHeight = menuSmallFontSize + padding*2;
+            bragX = Math.floor((canvasWidth-bragWidth)/2);
+            bragY = Math.floor(bragHeight/2)-(vPixelSize*2);
+            bragTextY = Math.floor(bragHeight/2);
+            bragQrWidth = Math.floor(Math.min(canvasWidth, canvasHeight) * 0.6);
+            bragQrHeight = bragQrWidth;
+            bragQrX = Math.floor((canvasWidth-bragQrWidth)/2);
+            bragQrY = Math.floor((canvasHeight-bragQrHeight)/2);
 
             // --- Credits
             creditsFontSize = Math.max(MIN_FONTSIZE,Math.floor(hPixelSize*CREDITS_FONTSIZE));
@@ -2518,6 +2730,8 @@ function Game() {
                     if (moved)
                         audio.playAudio(audio.audio.step);
                 }
+            } else if ((gameState === GAMESTATE_BRAGQR) && isButtonOk(button)) {
+                goBackTitle();
             }
         } else {
             if (!menuDragE && (state == 1) && (button == BUTTON_DRAG)) {
@@ -2598,6 +2812,8 @@ function Game() {
                 }
             } else if (isGameOver && (gameE > enableHitAt))
                endRun();
+        } else if (gameState === GAMESTATE_BRAGQR) {
+            goBackTitle();
         }
         isButtonMode = false;
         isPointerMode = true;
@@ -2894,10 +3110,8 @@ function Game() {
             settings.bganimations = true;
 
         GAMEMODES.list.forEach((mode,id)=>{
-            if (!settings.stats[mode.id])
-                settings.stats[mode.id] = {};
-            if (settings.stats[mode.id].highScore === undefined)
-                settings.stats[mode.id].highScore = 0;
+            if (!settings.stats[mode.id] || (settings.stats[mode.id].highScore === undefined))
+                resetHighScore(mode);
         })
 
     }
@@ -2955,6 +3169,12 @@ function Game() {
                 loadingTotal = a;
                 loadingLoaded = b;
             },()=>{
+                let
+                    bragBoardInit = BRAGBOARD.initialize();
+
+                if (bragBoardInit.message)
+                    setNotification(bragBoardInit.message);
+
                 if (window.Installer)
                     Installer.check(()=>{
                         showInstaller = true;

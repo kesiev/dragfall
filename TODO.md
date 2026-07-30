@@ -1,6 +1,7 @@
 # TODO
  
 ## Done
+ - [x] High score bragging tool
  - [x] **New mode:** 40-lines. No colored gems, clear 40 lines as fast as you can
  - [x] **New mode:** Chilled. No time, no difficulty increase
  - [x] Summon the next burst waves using a button (The game disables this button once your stack rises too high and enters the "Danger" zone to prevent accidental game overs)

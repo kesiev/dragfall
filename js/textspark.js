@@ -8,11 +8,6 @@ function TextSpark(ctx, e, x, y, spark) {
 
     progress = (e - spark.e)/spark.speed;
 
-    ctx.font = spark.font;
-    ctx.textBaseline = "middle";
-    ctx.textAlign = "center";
-    ctx.shadowBlur = spark.blur;
-
     if (progress < 0)
         return false;
     if (progress >= 1)
@@ -33,6 +28,16 @@ function TextSpark(ctx, e, x, y, spark) {
             x+= spark.slide * Math.sin(Math.PI * 0.5 * progress);
     } else
         alpha = progress = 1;
+
+    if (spark.backgroundColor) {
+        ctx.shadowColor = ctx.fillStyle = "rgba("+spark.backgroundColor.r+","+spark.backgroundColor.g+","+spark.backgroundColor.b+","+alpha+")";
+        ctx.fillRect(spark.backgroundX,spark.backgroundY,spark.backgroundWidth,spark.backgroundHeight);
+    }
+
+    ctx.font = spark.font;
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "center";
+    ctx.shadowBlur = spark.blur;
 
     ctx.fillStyle = "rgba("+spark.color.r+","+spark.color.g+","+spark.color.b+","+alpha+")";
     ctx.shadowColor = "rgba("+spark.shadowColor.r+","+spark.shadowColor.g+","+spark.shadowColor.b+","+alpha+")";

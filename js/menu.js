@@ -5,7 +5,6 @@ function Menu(options, selectedOption, onchange, lines, color1, color2, colorfon
         prevWidth, prevHeight,
         currentOption,
         halfFontSize,
-        glow,
         centerX,
         centerY,
         extraOptionHeight,
@@ -76,27 +75,33 @@ function Menu(options, selectedOption, onchange, lines, color1, color2, colorfon
             disable:()=>{
                 isEnabled = false;
             },
-            render:(canvaswidth, canvasheight, e, ctx, font, fontSize, blur, linespacing, padding, x, y, width, height)=>{
+            enable:()=>{
+                isEnabled = true;
+            },
+            render:(canvaswidth, canvasheight, e, ctx, font, smallFont, fontSize, smallFontSize, blur, linespacing, padding, x, y, width, height, bragx, bragy, bragwidth, bragheight, bragtexty, bragcolor, bragtextcolor, bragbeatencolor, bragbeatentextcolor)=>{
+                let
+                    glow = 0.8 + Math.sin(e*0.002)*0.2;
+
                 if (
                     forceUpdate ||
                     (canvaswidth != prevWidth) ||
                     (canvasheight != prevHeight)
                 ) {
-                    canvaswidth = prevWidth;
-                    canvasheight = prevHeight;
-                    currentOption = options[selectedOption],
-                    halfFontSize = fontSize/2,
-                    glow = 0.8 + Math.sin(e*0.002)*0.2,
-                    centerX = x + Math.floor((width/2)),
-                    centerY = y + Math.floor((height/2)),
-                    extraOptionHeight = fontSize+(padding*2),
-                    barHeight = ((fontSize+linespacing)*lines)+(padding*4)-linespacing,
-                    innerBarHeight = barHeight - (padding*2),
-                    barY = centerY - Math.floor(barHeight/2),
-                    selectedOptionHeight = ((fontSize+linespacing)*currentOption.label.length)-linespacing,
-                    selectedOptionY = barY + Math.floor((barHeight-selectedOptionHeight)/2+halfFontSize),
-                    extraOptionsCount = Math.floor((height - barHeight)/extraOptionHeight),
-                    optionsY = centerY-(extraOptionHeight*extraOptionsCount)
+                    prevWidth = canvaswidth;
+                    prevHeight = canvasheight;
+                    currentOption = options[selectedOption];
+                    halfFontSize = fontSize/2;
+                    centerX = x + Math.floor((width/2));
+                    centerY = y + Math.floor((height/2));
+                    extraOptionHeight = fontSize+(padding*2);
+                    barHeight = ((fontSize+linespacing)*lines)+(padding*4)-linespacing;
+                    innerBarHeight = barHeight - (padding*2);
+                    barY = centerY - Math.floor(barHeight/2);
+                    selectedOptionHeight = ((fontSize+linespacing)*currentOption.label.length)-linespacing;
+                    selectedOptionY = barY + Math.floor((barHeight-selectedOptionHeight)/2+halfFontSize);
+                    extraOptionsCount = Math.floor((height - barHeight)/extraOptionHeight);
+                    optionsY = centerY-(extraOptionHeight*extraOptionsCount);
+                    forceUpdate = false;
                 }
 
                 ctx.shadowColor = 0;
@@ -137,6 +142,16 @@ function Menu(options, selectedOption, onchange, lines, color1, color2, colorfon
 
                     if (downOption)
                         ctx.fillText(downOption.label[0], centerX, barY+barHeight+(i*extraOptionHeight)+padding);
+                }
+
+                if (currentOption.brag) {
+                    let
+                        y = barY+barHeight-bragy;
+                    ctx.font = smallFont;
+                    ctx.fillStyle = currentOption.brag.beaten ? bragbeatencolor : bragcolor;
+                    ctx.fillRect(bragx, y, bragwidth, bragheight);
+                    ctx.fillStyle = currentOption.brag.beaten ? bragbeatentextcolor : "rgba("+bragtextcolor.r+","+bragtextcolor.g+","+bragtextcolor.b+","+glow+")";
+                    ctx.fillText(currentOption.brag.player+": "+currentOption.brag.score,centerX, y+bragtexty);
                 }
 
             }

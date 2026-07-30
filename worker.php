@@ -9,7 +9,7 @@ header("Pragma: no-cache");
 
 ?>
 
-var CACHE = 'dragfall-cache-v0.3.1-0';
+var CACHE = 'dragfall-cache-v0.3.2-0';
 var precacheFiles =
 
 <?php

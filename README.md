@@ -192,6 +192,7 @@ Some modes have longer games, and I found myself having to interrupt them on sev
 #### Libraries
 
  - [jsxm](https://github.com/a1k0n/jsxm)
+ - [QR-Code generator](https://github.com/kazuhikoarase/qrcode-generator)
  
 #### Thanks
 
