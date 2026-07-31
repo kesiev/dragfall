@@ -36,7 +36,22 @@ function BragBoard(settings) {
         TEXT_TAB = 180;
 
     let
-        bragBoard;
+        bragBoard,
+        scanVideo,
+        scanStream,
+        scanner,
+        isScannerRunning,
+        isScannerStarted,
+        scannerCamerasCount,
+        scannerCurrentCamera,
+        scannerCameras,
+        scannerCache,
+        isIOS = (
+            /iPad|iPhone|iPod/.test(navigator.platform) ||
+            (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+        ) && !window.MSStream,
+        isFirefox = /firefox/i.test(navigator.userAgent),
+        firefoxOk = false;
 
     function formatTime(time) {
         time = Math.floor(time/10);
@@ -413,6 +428,160 @@ function BragBoard(settings) {
         return imported;
     }
 
+    function mergeBragBoardString(s) {
+        let
+            board = decodeBragString(s);
+
+        if (board.isError)
+            return board;
+        else {
+            let
+                imported = mergeBragBoard(board.data);
+            return {
+                isError:false,
+                message:"Imported "+imported+" "+(imported == 1 ? "brag" : "brags")
+            }
+        }
+    }
+
+    function waitForCameras(cb, abortcb) {
+        var constraints,self=this;
+        if (isIOS)
+            cb(0,1,"Fake camera");
+        else {
+            navigator.mediaDevices.enumerateDevices().then((devices)=>{
+                let
+                    deviceIds = [];
+                
+                devices.forEach(function(device) {
+                    if (device.kind === "videoinput")
+                        deviceIds.push(device.deviceId);
+                });
+
+                if (isFirefox && (deviceIds.length == 0) && !sfirefoxOk) {
+                    firefoxOk = true;
+                    navigator.mediaDevices.getUserMedia({ video:true, audio:true }).then(()=>{
+                        waitForCameras(cb, abortcb);
+                    }).catch(()=>{
+                        abortcb()
+                    });
+                }
+                
+                deviceIds.forEach((camera,id)=>{
+                    cb(id, deviceIds.length, camera);
+                })
+            }).catch(() => {
+                abortcb()
+            }); 
+        }
+    }
+
+    function scannerOnFrame(canvas, ctx) {
+        let
+            out = ERROR_NONE;
+            
+        if (isScannerRunning) {
+            if (scanVideo.readyState === scanVideo.HAVE_ENOUGH_DATA) {
+                let
+                    result = scanner.scan(),
+                    height = (canvas.width / scanVideo.videoWidth) * scanVideo.videoHeight,
+                    dHeight = Math.floor((canvas.height-height)/2),
+                    width = (canvas.height / scanVideo.videoHeight) * scanVideo.videoWidth,
+                    dWidth = Math.floor((canvas.width-width)/2);
+
+                if (dHeight < dWidth)
+                    ctx.drawImage(scanVideo, 0, dHeight, canvas.width, height);
+                else
+                    ctx.drawImage(scanVideo, dWidth, 0, width, canvas.height);
+
+                if (result && result.content) {
+                    let
+                        hash = result.content.replace(/.*#/,"#");
+                    if (hash.startsWith(BRAGBOARD_HASH)) {
+                        let
+                            data = hash.substr(BRAGBOARD_HASH.length);
+                        if (!scannerCache[data]) {
+                            scannerCache[data] = true;
+                            out = mergeBragBoardString(data);
+                        }
+                    }                    
+                }
+            }
+        }
+        return out;
+    }
+
+    function initializeScan() {
+
+        scanVideo = document.createElement("video");
+        scanner = new Instascan.Scanner({ video: scanVideo, continuous:false, backgroundScan:false, captureImage:false });
+        scannerCameras = [];
+        scannerCamerasCount = 0;
+        scannerCurrentCamera = -1;
+        scannerCache = {};
+    }
+
+    function startScan(id, abort) {
+        let
+            query,
+            camera = scannerCameras[id];
+
+        scannerCurrentCamera = id;
+        scanVideo.pause();
+
+        if (scanStream) {
+            scanStream.getTracks().forEach((track)=>track.stop()); 
+            isScannerRunning = false;
+        }
+
+        if (isIOS) query = { video: { facingMode: "environment" } };
+        else query = { video: { "deviceId": camera } };
+
+        navigator.mediaDevices.getUserMedia(query).then((stream)=>{
+            bragBoard.camera = id;
+            saveData();
+            scanStream = stream;
+            scanVideo.srcObject = stream;
+            scanVideo.play();
+            isScannerRunning = true;
+        }).catch(()=>{
+            abort();
+        }); 
+
+    }
+
+    function stopScan() {
+        if (isScannerRunning) {
+            scanVideo.pause();
+            if (scanStream)
+                scanStream.getTracks().forEach((track)=>track.stop());
+            isScannerRunning = false;
+        }
+    }
+
+    function endScan() {
+        stopScan();
+    }
+
+    function toggleTorch() {
+        try {
+            if (scanStream) {
+                if (window.ImageCapture) {
+                const track = scanStream.getVideoTracks()[0];
+                    const imageCapture = new ImageCapture(track)
+                    const photoCapabilities = imageCapture.getPhotoCapabilities().then(() => {
+                    try {
+                        track.applyConstraints({ advanced: [{torch: to}] })
+                            .then(e=>{callback()})
+                            .catch(e => {})
+                    } catch (e) {}
+                    });
+                }
+            }
+        } catch (e) {}
+    }
+
+
     return {
         initialize:()=>{
             let
@@ -431,23 +600,24 @@ function BragBoard(settings) {
 
             if (hash.startsWith(BRAGBOARD_HASH)) {
                 let
-                    data = hash.substr(BRAGBOARD_HASH.length),
-                    newBragBoard = decodeBragString(data);
+                    s = hash.substr(BRAGBOARD_HASH.length);
 
                 window.location.hash = "#";
 
-                if (newBragBoard.isError)
-                    return newBragBoard;
-                else {
-                    let
-                        imported = mergeBragBoard(newBragBoard.data);
-                    return {
-                        isError:false,
-                        message:"Imported "+imported+" "+(imported == 1 ? "brag" : "brags")
-                    }
-                }
+                return mergeBragBoardString(s);
             }
             return ERROR_NONE;
+        },
+        debug:(stats)=>{
+            let
+                bragdata = createBragCardData(stats),
+                canvas = createBragCard(bragdata),
+                url = createBragUrl(bragdata);
+
+            console.log(url);
+            
+            document.body.innerHTML = "";
+            document.body.appendChild(canvas);
         },
         getBrag:(id, score)=>{
             for (let i=0;i<bragBoard.s.length;i++) {
@@ -491,16 +661,35 @@ function BragBoard(settings) {
         getName:()=>{
             return bragBoard.n;
         },
-        debug:(stats)=>{
-            let
-                bragdata = createBragCardData(stats),
-                canvas = createBragCard(bragdata),
-                url = createBragUrl(bragdata);
-
-            console.log(url);
+        scannerStart:()=>{
+            if (isScannerRunning)
+                endScan();
             
-            document.body.innerHTML = "";
-            document.body.appendChild(canvas);
+            initializeScan();
+            waitForCameras((id, total, camera)=>{
+                scannerCamerasCount = total;
+                scannerCameras[id] = camera;
+                if (
+                    ((bragBoard.camera === undefined) && (id == total-1)) ||
+                    (bragBoard.camera == id)
+                )
+                    startScan(id, endScan);
+            },endScan);
+        },
+        scannerOnFrame:(canvas, ctx)=>{
+            return scannerOnFrame(canvas, ctx);
+        },
+        scannerStop:()=>{
+            endScan();
+        },
+        scannerChangeCamera:()=>{
+            if (isScannerRunning && scannerCamerasCount) {
+                let
+                    nextCamera = (scannerCurrentCamera+1) % scannerCamerasCount;
+
+                if (nextCamera != scannerCurrentCamera)
+                    startScan(nextCamera, endScan);
+            }
         },
         linkCopy:(stats,cb)=>{
             let

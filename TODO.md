@@ -1,6 +1,8 @@
 # TODO
  
 ## Done
+
+ - [x] Add BragQR Reader
  - [x] High score bragging tool
  - [x] **New mode:** 40-lines. No colored gems, clear 40 lines as fast as you can
  - [x] **New mode:** Chilled. No time, no difficulty increase

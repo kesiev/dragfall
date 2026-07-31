@@ -123,7 +123,7 @@ Our trusty Preuk asked on Discord for a highscore page to list scores from all m
     <p>My launch day BragCard&trade;! In my defense, I declare that I cleared my highscores and played each mode just once.</p>
 </div>
 
-You can ~~brag~~ share your highscores with friends via [BragCards](markdown/bragcard.png) (Old-school forums inspired images), [BragLinks](https://www.kesiev.com/dragfall/#BRGQlJHOjAuMTpEUkY6MC4zLjI7S2VzaWVWOjE3ODU0MTYwMDM2MjA7U1QvMS8zMDA1OjQwLzEvMTE1ODE2LjU5OTk5OTk5OTkyOkdULzEvNDIzOTpCVS8xLzM1NDpZWS8xLzIwNzE6Q0gvMS8zOTE7NTA4NzM0NTc1NDIxMzYzOA==) (Plain weblinks), or **BragQRs** (QR-Codes displayed in-game).
+You can ~~brag~~ share your highscores with friends via [BragCards](markdown/bragcard.png) (Old-school forums inspired images), [BragLinks](https://www.kesiev.com/dragfall/#BRGQlJHOjAuMTpEUkY6MC4zLjI7S2VzaWVWOjE3ODU0MTYwMDM2MjA7U1QvMS8zMDA1OjQwLzEvMTE1ODE2LjU5OTk5OTk5OTkyOkdULzEvNDIzOTpCVS8xLzM1NDpZWS8xLzIwNzE6Q0gvMS8zOTE7NTA4NzM0NTc1NDIxMzYzOA==) (Plain weblinks), or **BragQRs** (QR-Codes displayed in-game). BragQRs just contain a BragLink, so they can be scanned with any QR-Code scanner. Anyway, I've slammed a BragQR reader in DRAGFALL too, so you can easily scan multiple of them in-game.
 
 Shared scores (called Brags) are just aside your regular highscores. On the mode selection screen, you can see who is bragging about their highscore. If you've beaten him, it will be shamefully grayed out, so you can _feed your ego_ every time you see that.
 
@@ -213,6 +213,7 @@ Some modes have longer games, and I found myself having to interrupt them on sev
 
  - [jsxm](https://github.com/a1k0n/jsxm)
  - [QR-Code generator](https://github.com/kazuhikoarase/qrcode-generator)
+ - [Instascan](https://github.com/schmich/instascan)
  
 #### Thanks
 

@@ -126,6 +126,9 @@ function Game() {
             "",
             "QR-Code generator",
             "https://github.com/kazuhikoarase/qrcode-generator",
+            "",
+            "Instascan",
+            "https://github.com/schmich/instascan",
             "","",
             "< THANKS >",
             "",
@@ -198,6 +201,7 @@ function Game() {
         GAMESTATE_TITLE = 1,
         GAMESTATE_PLAY = 2,
         GAMESTATE_BRAGQR = 3,
+        GAMESTATE_BRAGSCANNER = 4,
         // --- Quick save
         QUICKSAVE_MODES = [ "OFF", "ON CLOSE", "ALWAYS" ],
         // --- Play mode
@@ -276,6 +280,13 @@ function Game() {
             gameModes:GAMEMODES,
             gameHome:GAME_SHORTHOME
         }),
+        BRAGCAMERA_NEXTCAMERALABEL = ">>",
+        BRAGCAMERA_EXITLABEL = "X",
+        BRAGCAMERA_COLOR = "#c33",
+        BRAGCAMERA_SHADOW = "#000",
+        BRAGCAMERA_TEXTCOLOR = "#fff",
+        BRAGCAMERA_BUTTONSIZE = 50,
+        BRAGCAMERA_FONTSIZE = 12,
         BRAGBOARD_COLOR = "#7300ff",
         BRAGBOARD_TEXTCOLOR = { r:255, g:255, b:255 },
         BRAGBOARD_BEATENCOLOR = "#333",
@@ -434,6 +445,8 @@ function Game() {
         notificationX, notificationY, notificationWidth, notificationHeight, notificationFont,
         // --- BragBoard
         bragWidth, bragHeight, bragX, bragY, bragTextY, bragQr, bragQrX, bragQrY, bragQrWidth, bragQrHeight,
+        bragCameraFont, bragCameraX, bragCameraX1, bragCameraTextX, bragCameraY, bragCameraY1, bragCameraTextY, bragCameraWidth, bragCameraHeight,
+        bragCloseCameraX, bragCloseCameraX1, bragCloseCameraTextX, bragCloseCameraY, braClosegCameraY1, bragCloseCameraTextY, bragCloseCameraWidth, bragCloseCameraHeight,
         // --- Screen resize triggers
         oldClientWidth, oldClientHeight,
         // --- Screen canvas
@@ -848,6 +861,15 @@ function Game() {
                         currentMenu = 0;
                     }
                 },{
+                    label:[ "Scan BragQr" ],
+                    onSelect:(menu, option)=>{
+                        menu.disable();
+                        defaultMenuEffect();
+                        BRAGBOARD.scannerStart();
+                        gotoGameState(GAMESTATE_BRAGSCANNER);
+                        currentMenu = 0;
+                    }
+                },{
                     label:[ "Clear Brags" ],
                     onSelect:(menu, option)=>{
                         menu.disable();
@@ -1165,6 +1187,35 @@ function Game() {
             }
             case GAMESTATE_BRAGQR:{
                 ctx.drawImage(bragQr, bragQrX, bragQrY, bragQrWidth, bragQrHeight);
+                break;
+            }
+            case GAMESTATE_BRAGSCANNER:{
+                let
+                    result = BRAGBOARD.scannerOnFrame(canvas, ctx);
+
+                if (result.message) {
+                    if (result.isError)
+                        audio.playAudio(audio.audio.step);
+                    else
+                        audio.playAudio(audio.audio.line);
+                    setNotification(result.message);
+                }
+
+                ctx.shadowColor = BRAGCAMERA_SHADOW;
+                ctx.shadowBlur = scoreBlur;
+                ctx.shadowColor = ctx.fillStyle = BRAGCAMERA_COLOR;
+                ctx.fillRect(bragCameraX ,bragCameraY, bragCameraWidth, bragCameraHeight);
+                ctx.fillRect(bragCloseCameraX, bragCloseCameraY, bragCloseCameraWidth, bragCloseCameraHeight);
+
+                ctx.font = bragCameraFont;
+                ctx.textBaseline = "middle";
+                ctx.textAlign = "center";
+                ctx.shadowBlur = 0;
+                ctx.fillStyle = BRAGCAMERA_TEXTCOLOR;
+
+                ctx.fillText(BRAGCAMERA_NEXTCAMERALABEL, bragCameraTextX, bragCameraTextY)
+                ctx.fillText(BRAGCAMERA_EXITLABEL, bragCloseCameraTextX, bragCloseCameraTextY)
+
                 break;
             }
             case GAMESTATE_PLAY:{
@@ -1707,6 +1758,19 @@ function Game() {
         if (!settings.stats[mode.id])
             settings.stats[mode.id] = {};
         settings.stats[mode.id].highScore = 0;
+    }
+
+    // --- BragBoard Scanner
+
+    function bragScannerChange() {
+        audio.playAudio(audio.audio.step);
+        BRAGBOARD.scannerChangeCamera();
+    }
+
+    function bragScannerClose() {
+        audio.playAudio(audio.audio.fall);
+        BRAGBOARD.scannerStop();
+        goBackTitle();
     }
 
     // --- Game flow
@@ -2369,6 +2433,7 @@ function Game() {
             titleFontSize,            
             footerFontSize,
             rowTextEffectFontSize,
+            bragCameraFontSize,
             creditsFontSize,
             quickDropFontSize,
             quickDropPadding,
@@ -2573,6 +2638,26 @@ function Game() {
             bragQrX = Math.floor((canvasWidth-bragQrWidth)/2);
             bragQrY = Math.floor((canvasHeight-bragQrHeight)/2);
 
+            bragCameraFontSize = Math.max(MIN_FONTSIZE,pixelSize*BRAGCAMERA_FONTSIZE);
+            bragCameraFont = bragCameraFontSize+"px y224";
+            bragCameraX = padding;
+            bragCameraY = padding;
+            bragCameraWidth = pixelSize * BRAGCAMERA_BUTTONSIZE;
+            bragCameraHeight = bragCameraWidth;
+            bragCameraX1 = bragCameraX+bragCameraWidth;
+            bragCameraY1 = bragCameraY+bragCameraHeight;
+            bragCameraTextX = bragCameraX+Math.floor(bragCameraWidth/2);
+            bragCameraTextY = bragCameraY+Math.floor(bragCameraHeight/2);
+
+            bragCloseCameraWidth = pixelSize * BRAGCAMERA_BUTTONSIZE;
+            bragCloseCameraHeight = bragCameraWidth;
+            bragCloseCameraX = canvasWidth-padding-bragCloseCameraWidth;
+            bragCloseCameraY = padding;
+            bragCloseCameraX1 = bragCloseCameraX+bragCloseCameraWidth;
+            bragCloseCameraY1 = bragCloseCameraY+bragCloseCameraHeight;
+            bragCloseCameraTextX = bragCloseCameraX+Math.floor(bragCloseCameraWidth/2);
+            bragCloseCameraTextY = bragCloseCameraY+Math.floor(bragCloseCameraHeight/2);
+
             // --- Credits
             creditsFontSize = Math.max(MIN_FONTSIZE,Math.floor(hPixelSize*CREDITS_FONTSIZE));
             creditsFont = creditsFontSize+"px y224";
@@ -2637,104 +2722,118 @@ function Game() {
                     endCredits();
             } else if (isGameOver && (gameE > enableHitAt) && isButtonOk(button)) {
                 endRun();
-            } else if (gameState === GAMESTATE_PLAY) {
-                if ((state == 1) && isPointerMode) {
-                    playerDrop();
-                } else if (isGameRunning && (button == BUTTON_BACK) )
-                    gotoPause(); 
-                else {
-                    let
-                        moved;
+            } else
+                switch (gameState) {
+                    case GAMESTATE_PLAY:{
+                        if ((state == 1) && isPointerMode) {
+                            playerDrop();
+                        } else if (isGameRunning && (button == BUTTON_BACK) )
+                            gotoPause(); 
+                        else {
+                            let
+                                moved;
 
-                    switch (button) {
-                        case BUTTON_UP:{
-                            if (state != 1) {
-                                cursorY--;
-                                if (cursorY<0)
-                                    cursorY = field.height-1;
-                            }
-                            break;
-                        }
-                        case BUTTON_DOWN:{
-                            if (state != 1) {
-                                cursorY++;
-                                if (cursorY>=field.height)
-                                    cursorY = 0;
-                            }
-                            break;
-                        }
-                        case BUTTON_LEFT:{
-                            if (state == 1) {
-                                if (isInteractive) {
-                                    // --- Drag block
-                                    if (movingBlock.fitsInField(field, -1, 0)) {
-                                        cursorX--;
-                                        movingBlock.x--;
-                                        moved = true;
+                            switch (button) {
+                                case BUTTON_UP:{
+                                    if (state != 1) {
+                                        cursorY--;
+                                        if (cursorY<0)
+                                            cursorY = field.height-1;
                                     }
+                                    break;
                                 }
-                            } else {
-                                // --- Move cursor
-                                cursorX--;
-                                if (cursorX<0)
-                                    cursorX = field.width-1;
-                            }
-                            break;
-                        }
-                        case BUTTON_RIGHT:{
-                            if (state == 1) {
-                                if (isInteractive) {
-                                    // --- Drag block
-                                    if (movingBlock.fitsInField(field, 1, 0)) {
-                                        cursorX++;
-                                        movingBlock.x++;
-                                        moved = true;
+                                case BUTTON_DOWN:{
+                                    if (state != 1) {
+                                        cursorY++;
+                                        if (cursorY>=field.height)
+                                            cursorY = 0;
                                     }
+                                    break;
                                 }
-                            } else {
-                                // --- Move cursor
-                                cursorX++;
-                                if (cursorX>=field.width)
-                                    cursorX = 0;
-                            }
-                            break;
-                        }
-                        case BUTTON_START:{
-                            doQuickDrop();
-                            break;
-                        }
-                        case BUTTON_DRAG:{
-                            if (isInteractive && (state == 0)) {
-                                let
-                                    selectedCell = field.getCell(cursorX, cursorY);
-                                if (selectedCell) {
-                                    if (selectedCell.unmovable) {
-                                        let
-                                            selectedArea = field.extractBlockAreaAt(cursorX, cursorY);
-                                        selectedArea.cells.forEach(cell=>{
-                                            overFieldEffects.addHilight(true, cell.x, cell.y, 400, DENIED_COLOR.r, DENIED_COLOR.g, DENIED_COLOR.b, 20);
-                                        })
-                                        audio.playAudio(audio.audio.blocked);
+                                case BUTTON_LEFT:{
+                                    if (state == 1) {
+                                        if (isInteractive) {
+                                            // --- Drag block
+                                            if (movingBlock.fitsInField(field, -1, 0)) {
+                                                cursorX--;
+                                                movingBlock.x--;
+                                                moved = true;
+                                            }
+                                        }
                                     } else {
-                                        // --- Drag and move
-                                        movingBlock = field.extractBlockAt(cursorX, cursorY);
-                                        shadowBlock = movingBlock.clone();
-                                        movingOrigin = cursorX;
-                                        movingBlockStart = movingBlock.x;
-                                        state = 1;
+                                        // --- Move cursor
+                                        cursorX--;
+                                        if (cursorX<0)
+                                            cursorX = field.width-1;
                                     }
+                                    break;
+                                }
+                                case BUTTON_RIGHT:{
+                                    if (state == 1) {
+                                        if (isInteractive) {
+                                            // --- Drag block
+                                            if (movingBlock.fitsInField(field, 1, 0)) {
+                                                cursorX++;
+                                                movingBlock.x++;
+                                                moved = true;
+                                            }
+                                        }
+                                    } else {
+                                        // --- Move cursor
+                                        cursorX++;
+                                        if (cursorX>=field.width)
+                                            cursorX = 0;
+                                    }
+                                    break;
+                                }
+                                case BUTTON_START:{
+                                    doQuickDrop();
+                                    break;
+                                }
+                                case BUTTON_DRAG:{
+                                    if (isInteractive && (state == 0)) {
+                                        let
+                                            selectedCell = field.getCell(cursorX, cursorY);
+                                        if (selectedCell) {
+                                            if (selectedCell.unmovable) {
+                                                let
+                                                    selectedArea = field.extractBlockAreaAt(cursorX, cursorY);
+                                                selectedArea.cells.forEach(cell=>{
+                                                    overFieldEffects.addHilight(true, cell.x, cell.y, 400, DENIED_COLOR.r, DENIED_COLOR.g, DENIED_COLOR.b, 20);
+                                                })
+                                                audio.playAudio(audio.audio.blocked);
+                                            } else {
+                                                // --- Drag and move
+                                                movingBlock = field.extractBlockAt(cursorX, cursorY);
+                                                shadowBlock = movingBlock.clone();
+                                                movingOrigin = cursorX;
+                                                movingBlockStart = movingBlock.x;
+                                                state = 1;
+                                            }
+                                        }
+                                    }
+                                    break;
                                 }
                             }
-                            break;
-                        }
-                    }
 
-                    if (moved)
-                        audio.playAudio(audio.audio.step);
+                            if (moved)
+                                audio.playAudio(audio.audio.step);
+                        }
+                        break;
+                    }
+                    case GAMESTATE_BRAGQR:{
+                        if (isButtonOk(button))
+                            goBackTitle();
+                        break;
+                    }
+                    case GAMESTATE_BRAGSCANNER:{
+                        if (isButtonOk(button))
+                            bragScannerClose();
+                        else
+                            bragScannerChange();
+                        break;
+                    }
                 }
-            } else if ((gameState === GAMESTATE_BRAGQR) && isButtonOk(button)) {
-                goBackTitle();
-            }
         } else {
             if (!menuDragE && (state == 1) && (button == BUTTON_DRAG)) {
                 playerDrop();
@@ -2760,63 +2859,86 @@ function Game() {
             menuDragE = lastE;
         } else if (credits) {
             endCredits();
-        } else if (gameState === GAMESTATE_PLAY) {
-            if (
-                isQuickDropAvailable &&
-                (pointerX > quickDropX) &&
-                (pointerX < quickDropX1) &&
-                (pointerY > quickDropY) &&
-                (pointerY < quickDropY1)
-            )
-                doQuickDrop();
-            else if (isGameRunning && ((pointerX < boardX) || (pointerX > boardRight) || (pointerY < boardY) || (pointerY > footerbarInnerY)))
-                gotoPause(); 
-            else if (isInteractive) {
-                if ((state == 1) && isButtonMode) {
-                    playerDrop();
-                } else {
-                    let
-                        cellX = Math.floor((pointerX-gridX)/cellWidth),
-                        cellY = Math.floor((pointerY-gridY)/cellHeight);
+        } else 
+            switch (gameState) {
+                case GAMESTATE_PLAY:{
+                    if (
+                        isQuickDropAvailable &&
+                        (pointerX > quickDropX) &&
+                        (pointerX < quickDropX1) &&
+                        (pointerY > quickDropY) &&
+                        (pointerY < quickDropY1)
+                    )
+                        doQuickDrop();
+                    else if (isGameRunning && ((pointerX < boardX) || (pointerX > boardRight) || (pointerY < boardY) || (pointerY > footerbarInnerY)))
+                        gotoPause(); 
+                    else if (isInteractive) {
+                        if ((state == 1) && isButtonMode) {
+                            playerDrop();
+                        } else {
+                            let
+                                cellX = Math.floor((pointerX-gridX)/cellWidth),
+                                cellY = Math.floor((pointerY-gridY)/cellHeight);
 
-                    if (field.isInField(cellX, cellY)) {
+                            if (field.isInField(cellX, cellY)) {
 
-                        switch (state) {
-                            case 0:{
-                                let
-                                    selectedCell = field.getCell(cellX, cellY);
-
-                                if (selectedCell) {
-                                    if (selectedCell.unmovable) {
+                                switch (state) {
+                                    case 0:{
                                         let
-                                            selectedArea = field.extractBlockAreaAt(cellX, cellY);
-                                        selectedArea.cells.forEach(cell=>{
-                                            overFieldEffects.addHilight(true, cell.x, cell.y, 400, DENIED_COLOR.r, DENIED_COLOR.g, DENIED_COLOR.b, 20);
-                                        })
-                                        audio.playAudio(audio.audio.blocked);
-                                    } else {
-                                        // --- Drag and move
-                                        movingBlock = field.extractBlockAt(cellX, cellY);
-                                        shadowBlock = movingBlock.clone();
-                                        movingOrigin = cellX;
-                                        movingBlockStart = movingBlock.x;
-                                        state = 1;
+                                            selectedCell = field.getCell(cellX, cellY);
+
+                                        if (selectedCell) {
+                                            if (selectedCell.unmovable) {
+                                                let
+                                                    selectedArea = field.extractBlockAreaAt(cellX, cellY);
+                                                selectedArea.cells.forEach(cell=>{
+                                                    overFieldEffects.addHilight(true, cell.x, cell.y, 400, DENIED_COLOR.r, DENIED_COLOR.g, DENIED_COLOR.b, 20);
+                                                })
+                                                audio.playAudio(audio.audio.blocked);
+                                            } else {
+                                                // --- Drag and move
+                                                movingBlock = field.extractBlockAt(cellX, cellY);
+                                                shadowBlock = movingBlock.clone();
+                                                movingOrigin = cellX;
+                                                movingBlockStart = movingBlock.x;
+                                                state = 1;
+                                            }
+                                        }  else if (DEBUG) {
+                                            field.addBlock(
+                                                new Block(cellX, cellY, 0, 0, false, false, false, [ [ 1 ] ] )
+                                            );
+                                        }
+                                        break;
                                     }
-                                }  else if (DEBUG) {
-                                    field.addBlock(
-                                        new Block(cellX, cellY, 0, 0, false, false, false, [ [ 1 ] ] )
-                                    );
                                 }
-                                break;
                             }
                         }
-                    }
+                    } else if (isGameOver && (gameE > enableHitAt))
+                    endRun();
+                    break;
                 }
-            } else if (isGameOver && (gameE > enableHitAt))
-               endRun();
-        } else if (gameState === GAMESTATE_BRAGQR) {
-            goBackTitle();
-        }
+                case GAMESTATE_BRAGQR:{
+                    goBackTitle();
+                    break;
+                }
+                case GAMESTATE_BRAGSCANNER:{
+                    if (
+                        (pointerX > bragCameraX) &&
+                        (pointerX < bragCameraX1) &&
+                        (pointerY > bragCameraY) &&
+                        (pointerY < bragCameraY1)
+                    )
+                        bragScannerChange();
+                    else if (
+                        (pointerX > bragCloseCameraX) &&
+                        (pointerX < bragCloseCameraX1) &&
+                        (pointerY > bragCloseCameraY) &&
+                        (pointerY < bragCloseCameraY1)
+                    )
+                        bragScannerClose();
+                    break;
+                }
+            }
         isButtonMode = false;
         isPointerMode = true;
         e.preventDefault();
