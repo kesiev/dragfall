@@ -328,7 +328,7 @@ function BragBoard(settings) {
                                                 foundIndex = -1;
 
                                             settings.gameModes.list.forEach((mode,index)=>{
-                                                if ((mode.shortId == modeShortId) && (mode.version == mode.version))
+                                                if ((mode.shortId == modeShortId) && (mode.version == modeVersion))
                                                     out.s[index] = {
                                                         v: mode.version,
                                                         i: mode.shortId,
@@ -362,52 +362,47 @@ function BragBoard(settings) {
     function mergeBragBoard(b) {
         let
             imported = 0;
+
         b.s.forEach(extscore=>{
-            let
-                notFound = true;
-
             if (extscore.s) {
+                let
+                    mode = getScoreGameMode(extscore);
 
-                for (let i=0;i<bragBoard.s.length;i++) {
+                if (mode && (mode.mode.version == extscore.v)) {
                     let
-                        score = bragBoard.s[i];
-                    if (score.i == extscore.i) {
-                        if (score.v == extscore.v) {
-                            let
-                                mode = getScoreGameMode(score);
-                            if (mode) {
-                                switch (mode.model.mEvaluate) {
-                                    case MEVALUATE_SCORE:{
-                                        if (extscore.s > score.s) {
-                                            score.d = b.d;
-                                            score.p = b.p;
-                                            score.s = extscore.s;
-                                            imported++;
-                                        }
-                                        break;
+                        notFound = true;
+
+                    for (let i=0;i<bragBoard.s.length;i++) {
+                        let
+                            found = false,
+                            score = bragBoard.s[i];
+                        if (score.i == extscore.i) {
+                            switch (mode.model.mEvaluate) {
+                                case MEVALUATE_SCORE:{
+                                    if (extscore.s > score.s) {
+                                        score.d = b.d;
+                                        score.p = b.p;
+                                        score.s = extscore.s;
+                                        imported++;
                                     }
-                                    case MEVALUATE_TIME:{
-                                        if (extscore.s < score.s) {
-                                            score.d = b.d;
-                                            score.p = b.p;
-                                            score.s = extscore.s;
-                                            imported++;
-                                        }
-                                        break;
+                                    break;
+                                }
+                                case MEVALUATE_TIME:{
+                                    if (extscore.s < score.s) {
+                                        score.d = b.d;
+                                        score.p = b.p;
+                                        score.s = extscore.s;
+                                        imported++;
                                     }
+                                    break;
                                 }
                             }
+                            notFound = false;
+                            break;
                         }
-                        notFound = false;
-                        break;
                     }
-                }
 
-                if (notFound) {
-                    let
-                        mode = getScoreGameMode(extscore);
-
-                    if (mode) {
+                    if (notFound) {
                         bragBoard.s.push({
                             i: mode.mode.shortId,
                             v: mode.mode.version,
@@ -418,7 +413,6 @@ function BragBoard(settings) {
                         imported++;
                     }
                 }
-
             }
         });
 
@@ -585,6 +579,7 @@ function BragBoard(settings) {
     return {
         initialize:()=>{
             let
+                cleaned = 0,
                 hash = document.location.hash;
 
             try {
@@ -598,6 +593,22 @@ function BragBoard(settings) {
             if (bragBoard.s === undefined)
                 bragBoard.s = [];
 
+            // --- Purge older brags
+            bragBoard.s = bragBoard.s.filter(s=>{
+                let
+                    mode = getScoreGameMode(s);
+                if (s.v != mode.mode.version) {
+                    cleaned++;
+                    return false;
+                } else
+                    return true;
+            });
+
+            if (cleaned)
+                saveData();
+
+            // --- Import data from BragLink
+
             if (hash.startsWith(BRAGBOARD_HASH)) {
                 let
                     s = hash.substr(BRAGBOARD_HASH.length);
@@ -606,6 +617,7 @@ function BragBoard(settings) {
 
                 return mergeBragBoardString(s);
             }
+
             return ERROR_NONE;
         },
         debug:(stats)=>{

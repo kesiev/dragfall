@@ -27,6 +27,10 @@ function GameModes() {
             darkColor2:{ r:64, g:0, b:64 },
             brightColor2:{ r:255, g:128, b:255 },
             shadowColor2:{ r:255, g:0, b:255 },
+            color3:{ r:34, g:204, b:204 },
+            darkColor3:{ r:0, g:64, b:64 },
+            brightColor3:{ r:128, g:255, b:255 },
+            shadowColor3:{ r:0, g:255, b:255 },
         },
         DEFAULT_PALETTE_2= {
             color1:{ r:204, g:34, b:34 },
@@ -37,6 +41,10 @@ function GameModes() {
             darkColor2:{ r:0, g:0, b:32 },
             brightColor2:{ r:128, g:128, b:255 },
             shadowColor2:{ r:0, g:0, b:255 },
+            color3:{ r:204, g:204, b:34 },
+            darkColor3:{ r:64, g:64, b:0 },
+            brightColor3:{ r:255, g:255, b:128 },
+            shadowColor3:{ r:255, g:255, b:0 },
         },
         DEFAULT_PALETTE_3= {
             color1:{ r:200, g:100, b:100 },
@@ -47,6 +55,10 @@ function GameModes() {
             darkColor2:{ r:0, g:32, b:0 },
             brightColor2:{ r:128, g:255, b:128 },
             shadowColor2:{ r:0, g:255, b:0 },
+            color3:{ r:100, g:100, b:200 },
+            darkColor3:{ r:0, g:0, b:64 },
+            brightColor3:{ r:128, g:128, b:255 },
+            shadowColor3:{ r:100, g:100, b:255 },
         },
         DEFAULT_PALETTE_4= {
             color1:{ r:204, g:204, b:204 },
@@ -57,6 +69,10 @@ function GameModes() {
             darkColor2:{ r:0, g:0, b:0 },
             brightColor2:{ r:40, g:20, b:20 },
             shadowColor2:{ r:60, g:30, b:30 },
+            color3:{ r:255, g:80, b:80 },
+            darkColor3:{ r:64, g:0, b:0 },
+            brightColor3:{ r:160, g:20, b:20 },
+            shadowColor3:{ r:255, g:0, b:0 },
         },
         DEFAULT_PALETTE_5= {
             color1:{ r:204, g:204, b:100 },
@@ -67,6 +83,10 @@ function GameModes() {
             darkColor2:{ r:64, g:0, b:64 },
             brightColor2:{ r:0, g:0, b:255 },
             shadowColor2:{ r:0, g:0, b:255 },
+            color3:{ r:254, g:100, b:204 },
+            darkColor3:{ r:60, g:0, b:60 },
+            brightColor3:{ r:255, g:0, b:255 },
+            shadowColor3:{ r:255, g:0, b:255 },
         },
         DEFAULT_PALETTE_6= {
             color1:{ r:104, g:34, b:204 },
@@ -77,6 +97,10 @@ function GameModes() {
             darkColor2:{ r:64, g:0, b:64 },
             brightColor2:{ r:255, g:128, b:255 },
             shadowColor2:{ r:255, g:0, b:255 },
+            color3:{ r:30, g:80, b:80 },
+            darkColor3:{ r:12, g:34, b:34 },
+            brightColor3:{ r:128, g:255, b:255 },
+            shadowColor3:{ r:0, g:255, b:255 },
         },
         GAMEOVER_DEFAULT = [
             { fontSize:13, text:"GAME OVER", blink:true },
@@ -160,7 +184,7 @@ function GameModes() {
                 addIncoming:[
                     {
                         special:true,
-                        color:4,
+                        color:6,
                         unshatterable:true,
                         solid:true,
                         logicColor:100,
@@ -176,13 +200,13 @@ function GameModes() {
                 addIncoming:[
                     {
                         special:true,
-                        color:5,
+                        color:7,
                         unmovable:true,
                         logicColor:100,
                         block:{ kick:3, pattern:[ [ 1, 1, 1 ] ]}
                     },{
                         special:true,
-                        color:5,
+                        color:7,
                         unmovable:true,
                         logicColor:100,
                         block:{ kick:2, pattern:[ [ 1, 1 ] ]}
@@ -194,7 +218,7 @@ function GameModes() {
                 addIncoming:[
                     {
                         special:true,
-                        color:5,
+                        color:7,
                         unmovable:true,
                         logicColor:100,
                         block:{ kick:2, pattern:[ [ 1, 1 ] ]}
@@ -204,18 +228,42 @@ function GameModes() {
         ],
         TRACK_LONGBLOCK = [
             {
-                afterLevel:4,
+                afterLevel:28,
                 everyLines:15,
                 addIncoming:[
                     {
                         special:true,
-                        color:6,
+                        color:8,
                         logicColor:0,
                         solid:true,
                         block:{ kick:1, pattern:[ [ 1 ], [ 1 ], [ 1 ] ]}
                     },{
                         special:true,
-                        color:7,
+                        color:9,
+                        logicColor:1,
+                        solid:true,
+                        block:{ kick:1, pattern:[ [ 1 ], [ 1 ], [ 1 ] ]}
+                    },{
+                        special:true,
+                        color:10,
+                        logicColor:2,
+                        solid:true,
+                        block:{ kick:1, pattern:[ [ 1 ], [ 1 ], [ 1 ] ]}
+                    }
+                ]
+            },{
+                afterLevel:4,
+                everyLines:15,
+                addIncoming:[
+                    {
+                        special:true,
+                        color:8,
+                        logicColor:0,
+                        solid:true,
+                        block:{ kick:1, pattern:[ [ 1 ], [ 1 ], [ 1 ] ]}
+                    },{
+                        special:true,
+                        color:9,
                         logicColor:1,
                         solid:true,
                         block:{ kick:1, pattern:[ [ 1 ], [ 1 ], [ 1 ] ]}
@@ -286,13 +334,15 @@ function GameModes() {
         list:[
             {
                 id:"standard",
-                version:1,
+                version:2,
                 shortId:"ST",
                 label:"Standard mode",
                 initialize:{
                     model:"standard",
                     introText:"LET'S DRAG & FALL",
                     blocks:DEFAULT_BLOCKS,
+                    setColors:2,
+                    setGarbageColors:2,
                     fieldWidth:8,
                     fieldHeight:16,
                     colorGems:true,
@@ -344,6 +394,10 @@ function GameModes() {
                     TRACK_LOCKEDBLOCK,
                     TRACK_LONGBLOCK,[
                         {
+                            atLevel:28,
+                            setColors:3,
+                            setGarbageColors:3
+                        },{
                             atLevel:26,
                             setBlocksPerDrop:[ 3 ],
                             setTimeLimitIsFall:true,
@@ -499,6 +553,8 @@ function GameModes() {
                     model:"timed",
                     introText:"Gotta go fast!",
                     blocks:DEFAULT_BLOCKS,
+                    setColors:2,
+                    setGarbageColors:2,
                     fieldWidth:8,
                     fieldHeight:16,
                     colorGems:false,
@@ -557,13 +613,15 @@ function GameModes() {
                 ]
             },{
                 id:"gatling",
-                version:1,
+                version:2,
                 shortId:"GT",
                 label:"Gatling mode",
                 initialize:{
                     model:"standard",
                     introText:"Go! Go! Go!",
                     blocks:LINE_BLOCKS,
+                    setColors:2,
+                    setGarbageColors:2,
                     fieldWidth:8,
                     fieldHeight:16,
                     colorGems:true,
@@ -586,7 +644,7 @@ function GameModes() {
                     setTimeLimit:TIMELIMIT_FAST,
                     setTimeLimitIsFall:true,
                     linesPerLevel:5,
-                    levelCap:30,
+                    levelCap:60,
                     setBlocksPerDrop:[ 2 ],
                     footerbarColorBorder:"#c33",
                     footerbarColor:"#400",
@@ -618,7 +676,7 @@ function GameModes() {
                             addIncoming:[
                                 {
                                     special:true,
-                                    color:4,
+                                    color:6,
                                     unshatterable:true,
                                     solid:true,
                                     logicColor:100,
@@ -627,6 +685,11 @@ function GameModes() {
                             ]
                         }
                     ],[
+                        {
+                            atLevel:40,
+                            setColors:3,
+                            setGarbageColors:3
+                        },
                         {
                             atLevel:25,
                             setTimeLimit:TIMELIMIT_VERYFAST,
@@ -648,21 +711,98 @@ function GameModes() {
                         }
                     ],[
                         {
+                            afterLevel:60,
+                            everyLines:5,
+                            addIncoming:[
+                                {
+                                    special:true,
+                                    color:7,
+                                    unmovable:true,
+                                    logicColor:100,
+                                    block:{ kick:4, pattern:[ [ 1, 1, 1, 1 ] ]}
+                                },{
+                                    special:true,
+                                    color:7,
+                                    unmovable:true,
+                                    logicColor:100,
+                                    block:{ kick:2, pattern:[ [ 1, 1 ], [ 1, 1 ] ]}
+                                }
+                            ]
+                        },
+                        {
+                            afterLevel:55,
+                            everyLines:5,
+                            addIncoming:[
+                                {
+                                    special:true,
+                                    color:7,
+                                    unmovable:true,
+                                    logicColor:100,
+                                    block:{ kick:4, pattern:[ [ 1, 1, 1, 1 ] ]}
+                                }
+                            ]
+                        },
+                        {
+                            afterLevel:50,
+                            everyLines:5,
+                            addIncoming:[
+                                {
+                                    special:true,
+                                    color:7,
+                                    unmovable:true,
+                                    logicColor:100,
+                                    block:{ kick:2, pattern:[ [ 1, 1 ], [ 1, 1 ] ]}
+                                }
+                            ]
+                        },
+                        {
+                            afterLevel:45,
+                            everyLines:5,
+                            addIncoming:[
+                                {
+                                    special:true,
+                                    color:7,
+                                    unmovable:true,
+                                    logicColor:100,
+                                    block:{ kick:3, pattern:[ [ 1, 1, 1 ] ]}
+                                }
+                            ]
+                        },
+                        {
+                            afterLevel:35,
+                            everyLines:5,
+                            addIncoming:[
+                                {
+                                    special:true,
+                                    color:7,
+                                    unmovable:true,
+                                    logicColor:100,
+                                    block:{ kick:2, pattern:[ [ 1, 1 ] ]}
+                                },{
+                                    special:true,
+                                    color:7,
+                                    unmovable:true,
+                                    logicColor:100,
+                                    block:{ kick:3, pattern:[ [ 1, 1, 1 ] ]}
+                                }
+                            ]
+                        },
+                        {
                             afterLevel:30,
                             everyLines:5,
                             addIncoming:[
                                 {
                                     special:true,
-                                    color:5,
+                                    color:7,
                                     unmovable:true,
                                     logicColor:100,
-                                    block:{ kick:3, pattern:[ [ 1 ] ]}
+                                    block:{ kick:1, pattern:[ [ 1 ] ]}
                                 },{
                                     special:true,
-                                    color:5,
+                                    color:7,
                                     unmovable:true,
                                     logicColor:100,
-                                    block:{ kick:3, pattern:[ [ 1, 1 ] ]}
+                                    block:{ kick:2, pattern:[ [ 1, 1 ] ]}
                                 }
                             ]
                         },{
@@ -671,10 +811,10 @@ function GameModes() {
                             addIncoming:[
                                 {
                                     special:true,
-                                    color:5,
+                                    color:7,
                                     unmovable:true,
                                     logicColor:100,
-                                    block:{ kick:3, pattern:[ [ 1 ] ]}
+                                    block:{ kick:1, pattern:[ [ 1 ] ]}
                                 }
                             ]
                         }
@@ -682,13 +822,15 @@ function GameModes() {
                 ]
             },{
                 id:"burst",
-                version:1,
+                version:2,
                 shortId:"BU",
                 label:"Burst mode",
                 initialize:{
                     model:"survival",
                     introText:"They are coming!",
                     blocks:DEFAULT_BLOCKS,
+                    setColors:2,
+                    setGarbageColors:2,
                     fieldWidth:8,
                     fieldHeight:16,
                     colorGems:true,
@@ -710,7 +852,7 @@ function GameModes() {
                     setTimeLimit:10000,
                     setTimeLimitIsFall:true,
                     linesPerLevel:5,
-                    levelCap:30,
+                    levelCap:40,
                     setBlocksPerDrop:[ 2 ],
                     footerbarColorBorder:"#3c3",
                     footerbarColor:"#040",
@@ -736,6 +878,46 @@ function GameModes() {
                 },
                 progress:[
                     [
+                        {
+                            afterLevel:40,
+                            setColors:3,
+                            setGarbageColors:3,
+                            autoDrop:5,
+                            autoDropAmount:4,
+                            setTimeLimit:3000
+                        },
+                        {
+                            afterLevel:38,
+                            setColors:3,
+                            setGarbageColors:3,
+                            autoDrop:5,
+                            autoDropAmount:4,
+                            setTimeLimit:3500
+                        },
+                        {
+                            afterLevel:36,
+                            setColors:3,
+                            setGarbageColors:3,
+                            autoDrop:5,
+                            autoDropAmount:4,
+                            setTimeLimit:4000
+                        },
+                        {
+                            afterLevel:34,
+                            setColors:3,
+                            setGarbageColors:3,
+                            autoDrop:5,
+                            autoDropAmount:4,
+                            setTimeLimit:4500
+                        },
+                        {
+                            afterLevel:32,
+                            setColors:3,
+                            setGarbageColors:3,
+                            autoDrop:5,
+                            autoDropAmount:4,
+                            setTimeLimit:5000
+                        },
                         {
                             afterLevel:30,
                             everyLevel:true,
@@ -832,7 +1014,7 @@ function GameModes() {
                 ]
             },{
                 id:"yinyang",
-                version:1,
+                version:2,
                 shortId:"YY",
                 label:"Yinyang mode",
                 initialize:{
@@ -844,6 +1026,8 @@ function GameModes() {
                     vsYouPunishmentTrack:[ [ 5000, 3 ], [ 15000, 3 ] ],
                     garbageBlocks:LINE_BLOCKS,
                     blocks:DEFAULT_BLOCKS,
+                    setColors:2,
+                    setGarbageColors:2,
                     fieldWidth:8,
                     fieldHeight:16,
                     colorGems:true,
@@ -908,6 +1092,10 @@ function GameModes() {
                             atLevel:30,
                             setGarbageLimit:7
                         },{
+                            atLevel:28,
+                            setColors:3,
+                            setGarbageColors:3
+                        },{
                             atLevel:25,
                             setGarbageLimit:6
                         },{
@@ -934,6 +1122,8 @@ function GameModes() {
                     model:"chill",
                     introText:"Stack & Relax",
                     blocks:DEFAULT_BLOCKS,
+                    setColors:2,
+                    setGarbageColors:2,
                     fieldWidth:8,
                     fieldHeight:16,
                     colorGems:true,

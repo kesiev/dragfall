@@ -1,7 +1,11 @@
 # TODO
  
+ - [ ] Make an updated BragCard&trade; and BragLink&trade; sample for the README.md
+
 ## Done
 
+ - [x] Harder later levels
+ - [x] Add third color
  - [x] Add BragQR Reader
  - [x] High score bragging tool
  - [x] **New mode:** 40-lines. No colored gems, clear 40 lines as fast as you can

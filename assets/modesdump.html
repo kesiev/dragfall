@@ -8,12 +8,15 @@
         BLOCKS_LABEL = [
             "color1",
             "color2",
+            "color3",
             "shatterColor1",
             "shatterColor2",
+            "shatterColor3",
             "shatterColumn",
             "black",
             "sparkleColor1",
-            "sparkleColor2"
+            "sparkleColor2",
+            "sparkleColor3",
         ];
 
     function createRGB(color) {
@@ -81,7 +84,8 @@
     function dumpBlock(block) {
         let
             preview = "";
-            out = [];
+            out = [],
+            kick = 0;
 
         if (block.color)
             out.push(BLOCKS_LABEL[block.color]);
@@ -91,6 +95,13 @@
             out.push("solid");
         if (block.unmovable)
             out.push("unmovable");
+
+        block.block.pattern.forEach((row=>{
+            kick = Math.max(kick, row.length);
+        }))
+
+        if (kick != block.block.kick)
+            console.warn("Bad kick in block",block,"set",block.block.kick,"should be",kick);
 
         return dumpPattern(block.block.pattern)+out.join("/");
     }
@@ -110,6 +121,10 @@
             out.push([ "Color gems", action.colorGems ? "Enabled" : "Disabled" ]);
         if (action.blocks !== undefined)
             out.push([ "Blocks", action.blocks.map(b=>dumpPattern(b.pattern)).join(" ") ]);
+        if (action.setColors !== undefined)
+            out.push([ "Colors", action.setColors+" type(s)" ]);
+        if (action.setGarbageColors !== undefined)
+            out.push([ "Garbage colors", action.setGarbageColors+" type(s)" ]);
 
         if (action.vsYouRecordingLength !== undefined)
             out.push([ "Vs. You recording length", action.vsYouRecordingLength+" &times; "+(action.setTimeLimit/1000)+"s" ]);
@@ -128,7 +143,11 @@
             out.push([ "Garbage blocks per set", action.setGarbageBlocksPerDrop.join("/") ]);
 
         if (action.palette !== undefined)
-            out.push([ "Palette", createBlock(createRGB(action.palette.color1), createRGB(action.palette.darkColor1), createRGB(action.palette.brightColor1), createRGB(action.palette.shadowColor1))+" / "+createBlock(createRGB(action.palette.color2), createRGB(action.palette.darkColor2), createRGB(action.palette.brightColor2), createRGB(action.palette.shadowColor2)) ] );
+            out.push([ "Palette",
+                createBlock(createRGB(action.palette.color1), createRGB(action.palette.darkColor1), createRGB(action.palette.brightColor1), createRGB(action.palette.shadowColor1))+" / "+
+                createBlock(createRGB(action.palette.color2), createRGB(action.palette.darkColor2), createRGB(action.palette.brightColor2), createRGB(action.palette.shadowColor2))+" / "+
+                createBlock(createRGB(action.palette.color3), createRGB(action.palette.darkColor3), createRGB(action.palette.brightColor3), createRGB(action.palette.shadowColor3))
+             ]);
         if (action.linesPerLevel !== undefined)
             out.push([ "Lines per level", action.linesPerLevel ]);
         if (action.levelCap !== undefined)

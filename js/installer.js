@@ -1,9 +1,13 @@
 Installer=(function(){
-
+	const
+		ENABLED = true;
+		
 	return {
 		install:function(hideInstallerCb) {
-			let self=this;
-			if (self.deferredInstall) {
+			let
+				self=this;
+
+			if (ENABLED && self.deferredInstall) {
 				self.deferredInstall.prompt().then(function() {
 					return self.deferredInstall.userChoice;
 				}).then(function(choice) {
@@ -14,7 +18,7 @@ Installer=(function(){
 			}
 		},
 		check:function (showInstallerCb) {
-			if (document.location.hash != "#user_mode=app") {
+			if (ENABLED && document.location.hash != "#user_mode=app") {
 				if ('serviceWorker' in navigator) {
 					if (!navigator.serviceWorker.controller) {
 					  navigator.serviceWorker.register('worker.php', { scope: './'}).then(function(reg) {

@@ -1,4 +1,4 @@
-function Next(colors, seed) {
+function Next(seed) {
     let
         incoming = [],
         random = new Random(seed),
@@ -15,7 +15,8 @@ function Next(colors, seed) {
                 random.getSeed(),
                 bag.list ? JSON.parse(JSON.stringify(bag.list)) : 0,
                 randomAmount.getSeed(),
-                amountBag.list ? JSON.parse(JSON.stringify(amountBag.list)) : 0
+                amountBag.list ? JSON.parse(JSON.stringify(amountBag.list)) : 0,
+                colors
             ];
         },
         unserialize:(data)=>{
@@ -26,6 +27,7 @@ function Next(colors, seed) {
             randomAmount.setSeed(data[3]);
             if (data[4])
                 amountBag.list = data[4];
+            colors = data[5] || 2; // TODO: || 2 for backward compatibility. Remove later.
         },
         setAmount:(amounts)=>{
             amountBag = { elements:amounts };
@@ -37,6 +39,12 @@ function Next(colors, seed) {
                     bag.elements.push(block);
             })
             self.failureLimit = bag.elements.length;
+        },
+        setColors:(c)=>{
+            colors = c;
+        },
+        getColors:(c)=>{
+            return colors;
         },
         getAmount:()=>{
             return randomAmount.bagPick(amountBag);

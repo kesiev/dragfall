@@ -16,7 +16,7 @@ function Game() {
         GAME_LOCALSTORAGE = "_DRAGFALL",
         GAME_STATE_LOCALSTORAGE = "_DRAGFALL_S",
         GAME_NAME = "DRAGFALL",
-        GAME_VERSION = "0.3.2",
+        GAME_VERSION = "0.3.3",
         GAME_FOOTER = [ "Drag up-down", "Hit to select", "v"+GAME_VERSION+" by KesieV" ],
         GAME_CREDITS_MUSIC = "track2",
         GAME_GITHUB = "http://github.com/kesiev/dragfall",
@@ -136,6 +136,8 @@ function Game() {
             "Preuk",
             "Dymonika",
         ],
+        // --- Logic
+        GEM_COLORGEMID = 3,
         // --- Title screen
         TITLE_COLOR = "#FFF",
         TITLE_COLOR_SHADOW = "#F00",
@@ -265,7 +267,7 @@ function Game() {
         BACKGROUND_QUALITY = [ { label:"Low", value:20 }, { label:"Medium", value:10 }, { label:"High", value:5 }, { label:"Very high", value:1 } ],
         BACKGROUND_FADETIME = 1000,
         // --- Game data
-        LOGICCOLORS = 2,
+        LOGICCOLORS = 3,
         // --- Notifications
         NOTIFICATION_FONTSIZE = 5,
         NOTIFICATION_COLOR = { r:255, g:255, b:255 },
@@ -518,41 +520,42 @@ function Game() {
             data = [
                 /*  0 */ GAME_VERSION,
                 /*  1 */ gameMode.id,
-                /*  2 */ playE,
-                /*  3 */ nextBlockStart,
-                /*  4 */ score,
-                /*  5 */ lines,
-                /*  6 */ level,
-                /*  7 */ isWarning,
-                /*  8 */ combo,
-                /*  9 */ garbageTugOfWar,
-                /* 10 */ incomingGarbage,
-                /* 11 */ vsYouRecord,
-                /* 12 */ vsYouRecordStart,
-                /* 13 */ vsYouRecordGarbage,
-                /* 14 */ vsYouCurrentRecording,
-                /* 15 */ vsYouGarbageTrack,
-                /* 16 */ vsYouGarbageTrackStart,
-                /* 17 */ vsYouGarbageTrackTotal,
-                /* 18 */ vsYouGarbageGivenTotal,
-                /* 19 */ vsYouTurn,
-                /* 20 */ linesPerLevel,
-                /* 21 */ linesToNextLevel,
-                /* 22 */ cursorX,
-                /* 23 */ cursorY,
-                /* 24 */ timeLimitIsFall,
-                /* 25 */ timeLimit,
-                /* 26 */ garbageLimit,
-                /* 27 */ fieldEffects.serialize(),
-                /* 28 */ field.serialize(),
-                /* 29 */ next.serialize(),
-                /* 30 */ garbageNext.serialize(),
-                /* 31 */ isBackgroundAnimationChanging && (nextBackgroundAnimation != -1) ? nextBackgroundAnimation : backgroundAnimation.getAnimation(),
-                /* 32 */ random.getSeed(),
-                /* 33 */ music ? music.id : 0,
-                /* 34 */ serializeProgress(),
-                /* 35 */ autodropEnded,
-                /* 36 */ isQuickDropAvailable,
+                /*  2 */ gameMode.version,
+                /*  3 */ playE,
+                /*  4 */ nextBlockStart,
+                /*  5 */ score,
+                /*  6 */ lines,
+                /*  7 */ level,
+                /*  8 */ isWarning,
+                /*  9 */ combo,
+                /* 10 */ garbageTugOfWar,
+                /* 11 */ incomingGarbage,
+                /* 12 */ vsYouRecord,
+                /* 13 */ vsYouRecordStart,
+                /* 14 */ vsYouRecordGarbage,
+                /* 15 */ vsYouCurrentRecording,
+                /* 16 */ vsYouGarbageTrack,
+                /* 17 */ vsYouGarbageTrackStart,
+                /* 18 */ vsYouGarbageTrackTotal,
+                /* 19 */ vsYouGarbageGivenTotal,
+                /* 20 */ vsYouTurn,
+                /* 21 */ linesPerLevel,
+                /* 22 */ linesToNextLevel,
+                /* 23 */ cursorX,
+                /* 24 */ cursorY,
+                /* 25 */ timeLimitIsFall,
+                /* 26 */ timeLimit,
+                /* 27 */ garbageLimit,
+                /* 28 */ fieldEffects.serialize(),
+                /* 29 */ field.serialize(),
+                /* 30 */ next.serialize(),
+                /* 31 */ garbageNext.serialize(),
+                /* 32 */ isBackgroundAnimationChanging && (nextBackgroundAnimation != -1) ? nextBackgroundAnimation : backgroundAnimation.getAnimation(),
+                /* 33 */ random.getSeed(),
+                /* 34 */ music ? music.id : 0,
+                /* 35 */ serializeProgress(),
+                /* 36 */ autodropEnded,
+                /* 37 */ isQuickDropAvailable,
             ];
 
         return data;
@@ -564,7 +567,7 @@ function Game() {
                 gameMode;
 
             GAMEMODES.list.forEach(mode=>{
-                if (mode.id == data[1])
+                if ((mode.id == data[1]) && (mode.version == data[2]))
                     gameMode = mode;
             })
 
@@ -573,47 +576,47 @@ function Game() {
                 newGame(gameMode, true);
 
                 // --- Restore data
-                playE = data[2];
-                nextBlockStart = data[3];
-                score = data[4];
-                lines = data[5];
-                level = data[6];
-                isWarning = data[7];
-                combo = data[8];
-                garbageTugOfWar = data[9];
-                incomingGarbage = data[10];
-                vsYouRecord = data[11];
-                vsYouRecordStart = data[12];
-                vsYouRecordGarbage = data[13];
-                vsYouCurrentRecording = data[14];
-                vsYouGarbageTrack = data[15];
-                vsYouGarbageTrackStart = data[16];
-                vsYouGarbageTrackTotal = data[17];
-                vsYouGarbageGivenTotal = data[18];
-                vsYouTurn = data[19];
-                linesPerLevel = data[20];
-                linesToNextLevel = data[21];
-                cursorX = data[22];
-                cursorY = data[23];
-                timeLimitIsFall = data[24];
-                timeLimit = data[25];
-                garbageLimit = data[26];
-                fieldEffects.unserialize(data[27]);
-                field.setField(data[28].field);
-                next.unserialize(data[29]);
-                garbageNext.unserialize(data[30]);
+                playE = data[3];
+                nextBlockStart = data[4];
+                score = data[5];
+                lines = data[6];
+                level = data[7];
+                isWarning = data[8];
+                combo = data[9];
+                garbageTugOfWar = data[10];
+                incomingGarbage = data[11];
+                vsYouRecord = data[12];
+                vsYouRecordStart = data[13];
+                vsYouRecordGarbage = data[14];
+                vsYouCurrentRecording = data[15];
+                vsYouGarbageTrack = data[16];
+                vsYouGarbageTrackStart = data[17];
+                vsYouGarbageTrackTotal = data[18];
+                vsYouGarbageGivenTotal = data[19];
+                vsYouTurn = data[20];
+                linesPerLevel = data[21];
+                linesToNextLevel = data[22];
+                cursorX = data[23];
+                cursorY = data[24];
+                timeLimitIsFall = data[25];
+                timeLimit = data[26];
+                garbageLimit = data[27];
+                fieldEffects.unserialize(data[28]);
+                field.setField(data[29].field);
+                next.unserialize(data[30]);
+                garbageNext.unserialize(data[31]);
 
                 if (data[31] === undefined)
                     isBackgroundAnimated = false;
                 else {
-                    backgroundAnimation.start(data[31]);
+                    backgroundAnimation.start(data[32]);
                     isBackgroundAnimated = true;
                 }
 
-                random.setSeed(data[32]);
-                audio.playMusic(audio.audio[data[33]]);
+                random.setSeed(data[33]);
+                audio.playMusic(audio.audio[data[34]]);
 
-                data[34].forEach((p,id)=>{
+                data[35].forEach((p,id)=>{
                     let
                         map = {};
                     for (let k in p)
@@ -624,8 +627,8 @@ function Game() {
                     progress[id] = map;
                 });
 
-                autodropEnded = data[35];
-                isQuickDropAvailable = data[36];
+                autodropEnded = data[36];
+                isQuickDropAvailable = data[37];
 
                 // --- Restore running gamestate
                 gameState = GAMESTATE_PLAY;
@@ -659,14 +662,22 @@ function Game() {
 
     function setPalette(p) {
         colors = [
+            // --- Basic blocks
             { score:1, color:p.color1, borderColor:p.darkColor1, particleColor:p.brightColor1, shadowColor:"#000", shadowBorderColor:p.shadowColor1, shatterEffectColor:p.brightColor1 },
             { score:1, color:p.color2, borderColor:p.darkColor2, particleColor:p.brightColor2, shadowColor:"#000", shadowBorderColor:p.shadowColor2, shatterEffectColor:p.brightColor2 },
+            { score:1, color:p.color3, borderColor:p.darkColor3, particleColor:p.brightColor3, shadowColor:"#000", shadowBorderColor:p.shadowColor3, shatterEffectColor:p.brightColor3 },
+            // --- Color gems
             { score:2, shatterColor:0, color:p.color1, borderColor:p.darkColor1, shadowColor:"#000", shadowBorderColor:p.shadowColor1, sparkle:{ r:255, g:255, b:255, sb:0.02, s1:0.002, s2:0.003, s3:0.004, s4:0.005, base:0.4, range:0.4, borderRange:50 } },
             { score:2, shatterColor:1, color:p.color2, borderColor:p.darkColor2, shadowColor:"#000", shadowBorderColor:p.shadowColor2, sparkle:{ r:255, g:255, b:255, sb:0.02, s1:0.002, s2:0.003, s3:0.004, s4:0.005, base:0.4, range:0.4, borderRange:50 } },
+            { score:2, shatterColor:2, color:p.color3, borderColor:p.darkColor3, shadowColor:"#000", shadowBorderColor:p.shadowColor3, sparkle:{ r:255, g:255, b:255, sb:0.02, s1:0.002, s2:0.003, s3:0.004, s4:0.005, base:0.4, range:0.4, borderRange:50 } },
+            // --- Shatter block
             { score:2, shatterColumn:true, effectColor:{  r:128, g:128, b:255 }, color:{ r:128, g:128, b:204 }, borderColor:{ r:0, g:0, b:64 }, shadowColor:"#000", shadowBorderColor:{ r:0, g:0, b:255 }, sparkle:{ r:255, g:255, b:255, sb:0.02, s1:0.0004, s2:0.0005, s3:0.0002, s4:0.0003, base:0.4, range:0.4, borderRange:20 } },
+            // --- Locked block
             { score:3, color:{ r:34, g:34, b:34 }, borderColor:{ r:128, g:128, b:128 }, shadowColor:"#000", shadowBorderColor:{ r:34, g:34, b:34 }, shatterEffectColor:{ r:255, g:128, b:128 }, sparkle:{ r:128, g:0, b:0, sb:0.02, s1:0.0004, s2:0.0005, s3:0.0002, s4:0.0003, base:0.6, range:0.4, borderRange:0 } },
+            // --- Shiny blocks
             { score:3, color:p.color1, borderColor:p.darkColor1, shadowColor:"#000", shadowBorderColor:p.shadowColor1, sparkle:{ r:255, g:255, b:255, sb:0, s1:0.002, s2:0.002, s3:0.002, s4:0.002, base:0.6, range:0.1, borderRange:0 } },
             { score:3, color:p.color2, borderColor:p.darkColor2, shadowColor:"#000", shadowBorderColor:p.shadowColor2, sparkle:{ r:255, g:255, b:255, sb:0, s1:0.002, s2:0.002, s3:0.002, s4:0.002, base:0.6, range:0.1, borderRange:0 } },
+            { score:3, color:p.color3, borderColor:p.darkColor3, shadowColor:"#000", shadowBorderColor:p.shadowColor3, sparkle:{ r:255, g:255, b:255, sb:0, s1:0.002, s2:0.002, s3:0.002, s4:0.002, base:0.6, range:0.1, borderRange:0 } },
         ];
     }
 
@@ -1758,6 +1769,7 @@ function Game() {
         if (!settings.stats[mode.id])
             settings.stats[mode.id] = {};
         settings.stats[mode.id].highScore = 0;
+        settings.stats[mode.id].version = mode.version;
     }
 
     // --- BragBoard Scanner
@@ -1800,12 +1812,14 @@ function Game() {
             seed = 1+Math.floor(Math.random()*SEEDS);
         field = new Field(mode.initialize.fieldWidth, mode.initialize.fieldHeight);
         lowestLine = field.height-1;
-        next = new Next(LOGICCOLORS, seed);
+        next = new Next(seed);
         next.setAmount(mode.initialize.setBlocksPerDrop);
         next.setBlocks(mode.initialize.blocks);
-        garbageNext = new Next(LOGICCOLORS, seed);
+        next.setColors(mode.initialize.setColors);
+        garbageNext = new Next(seed);
         garbageNext.setAmount(mode.initialize.setGarbageBlocksPerDrop || mode.initialize.setBlocksPerDrop);
         garbageNext.setBlocks(mode.initialize.garbageBlocks || mode.initialize.blocks);
+        garbageNext.setColors(mode.initialize.setGarbageColors);
         random = new Random(seed);
         fieldEffects = new FieldEffects(false, true, field);
         fieldEffects.setIdleColors(
@@ -2155,6 +2169,11 @@ function Game() {
         }
         if (event.autoDropAmount)
             autoDropAmount = event.autoDropAmount;
+        // --- Colors
+        if (event.setColors !== undefined)
+            next.setColors(event.setColors);
+        if (event.setGarbageColors !== undefined)
+            garbageNext.setColors(event.setGarbageColors);
         // --- Game clear
         if (event.gameClear)
             gameOver(false);
@@ -2255,7 +2274,7 @@ function Game() {
                             if (line.logicColors[i] == field.width)
                                 next.addIncoming({
                                     special:true,
-                                    color:i+2,
+                                    color:i+GEM_COLORGEMID,
                                     logicColor:i,
                                     block:{ kick:1, pattern:[ [ 1 ] ]}
                                 });
@@ -3210,7 +3229,7 @@ function Game() {
         }
 
         if (!settings.stats)
-            settings.stats = { highScores:{} };
+            settings.stats = {};
 
         if (settings.music === undefined)
             settings.music = true;
@@ -3235,6 +3254,11 @@ function Game() {
 
         GAMEMODES.list.forEach((mode,id)=>{
             if (!settings.stats[mode.id] || (settings.stats[mode.id].highScore === undefined))
+                resetHighScore(mode);
+            if (!settings.stats[mode.id].version)
+                settings.stats[mode.id].version = 1;
+            // --- Delete highscores if from a different version. Sorry!
+            if (settings.stats[mode.id].version != mode.version)
                 resetHighScore(mode);
         })
 
