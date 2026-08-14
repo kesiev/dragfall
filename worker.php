@@ -2,17 +2,10 @@
 
 // A quick and dirty way to create a working Offline Application worker :)
 
-header('Content-Type: text/javascript');
+header("Content-Type: text/javascript");
 header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
 header("Cache-Control: post-check=0, pre-check=0", false);
 header("Pragma: no-cache");
-
-?>
-
-var CACHE = 'dragfall-cache-v0.3.3-0';
-var precacheFiles =
-
-<?php
 
 function getDirContents($dir, &$results = array()){
     $files = scandir($dir);
@@ -31,6 +24,7 @@ function getDirContents($dir, &$results = array()){
 
 $rootPath = getcwd() . DIRECTORY_SEPARATOR;
 $rootPathLength = strlen($rootPath);
+
 $paths=[
   "audio",
   "images",
@@ -44,17 +38,13 @@ $out=[
 ];
 
 foreach ($paths as $path) {
-
   $files=getDirContents($rootPath . DIRECTORY_SEPARATOR . $path);
   for ($i=0;$i<count($files);$i++)
     array_push($out,substr($files[$i],$rootPathLength));
-
 }
 
-echo json_encode($out);
-
-?>
-;
+?>var CACHE = 'dragfall-cache-v0.4.4-0';
+var precacheFiles = <?php echo json_encode($out) ?>;
 
 self.addEventListener('install', function(evt) {
   evt.waitUntil(precache().then(function() {
@@ -69,8 +59,13 @@ self.addEventListener('activate', function(event) {
 });
 
 self.addEventListener('fetch', function(evt) {
-  evt.respondWith(fromCache(evt).catch(fromServer(evt.request)));
-  evt.waitUntil(update(evt.request));
+  const url = new URL(evt.request.url);
+  if (url.pathname.endsWith("/server/server.php")) {
+    evt.respondWith(fromServer(evt.request));
+  } else {
+    evt.respondWith(fromCache(evt).catch(fromServer(evt.request)));
+    evt.waitUntil(update(evt.request));
+  }
 });
 
 

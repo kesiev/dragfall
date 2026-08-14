@@ -113,6 +113,10 @@
         // --- Start
         if (action.model !== undefined)
             out.push([ "<span style='color:red'>Game mode</span>", action.model ]);
+        if (action.hasHighScores !== undefined)
+            out.push([ "High scores", action.hasHighScores ? "Yes" : "No" ]);
+        if (action.quickSaveEnabled !== undefined)
+            out.push([ "Quick save enabled", action.quickSaveEnabled ? "Yes" : "No" ]);
         if (action.introText !== undefined)
             out.push([ "Intro", "<tt>"+action.introText+"</tt>" ]);
         if (action.fieldWidth !== undefined)
@@ -191,6 +195,11 @@
             out.push([ "Line clear text", createColorBox(createRGB(action.rowtextColor))+" / Shadow: "+createColorBox(createRGB(action.rowtextColorShadow)) ]);
         if (action.particlesLineClearColor)
             out.push([ "Particles", "Line clear: "+createColorBox(createRGB(action.particlesLineClearColor)+" / Fall: "+action.particlesFallColor ) ]);
+
+        if (action.hostSettings)
+            out.push([ "Host player settings", "<br><div style='border:1px solid #000;padding:5px;'>"+dumpAction(action.hostSettings)+"</div>" ]);
+        if (action.guestSettings)
+            out.push([ "Guest player settings", "<br><div style='border:1px solid #000;padding:5px;'>"+dumpAction(action.guestSettings)+"</div>" ]);
 
         // --- Ongoing
         if (action.setBlocksPerDrop !== undefined)

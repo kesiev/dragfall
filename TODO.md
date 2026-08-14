@@ -1,7 +1,8 @@
 # TODO
- 
+
 ## Done
 
+ - [x] **New mode:** Vs mode (LAN only, sorry!)
  - [x] Make an updated BragCard&trade; and BragLink&trade; sample for the README.md (0.3.3)
  - [x] Harder later levels
  - [x] Add third color

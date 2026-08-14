@@ -16,7 +16,7 @@ function Game() {
         GAME_LOCALSTORAGE = "_DRAGFALL",
         GAME_STATE_LOCALSTORAGE = "_DRAGFALL_S",
         GAME_NAME = "DRAGFALL",
-        GAME_VERSION = "0.3.3",
+        GAME_VERSION = "0.4.4",
         GAME_FOOTER = [ "Drag up-down", "Hit to select", "v"+GAME_VERSION+" by KesieV" ],
         GAME_CREDITS_MUSIC = "track2",
         GAME_GITHUB = "http://github.com/kesiev/dragfall",
@@ -136,6 +136,19 @@ function Game() {
             "Preuk",
             "Dymonika",
         ],
+        ERROR_GENERAL = "Something went wrong!",
+        // --- Netplay
+        NETPLAY_ENABLED = true,
+        NETPLAY_SCREENDELAY = 2000,
+        NETPLAY_NEWGAMEHOST = 1,
+        NETPLAY_NEWGAMEGUEST = 2,
+        NETPLAYSIGNAL_READY = 1,
+        NETPLAYSIGNAL_ABORT = 2,
+        NETPLAYSIGNAL_CANCELSTATE = 3,
+        NETPLAYSIGNAL_SETSTATE = 4,
+        NETPLAYSIGNAL_DATA = 5,
+        NETPLAYSIGNAL_LOSE = 6,
+        NETPLAYSIGNAL_WIN = 7,
         // --- Logic
         GEM_COLORGEMID = 3,
         // --- Title screen
@@ -204,6 +217,7 @@ function Game() {
         GAMESTATE_PLAY = 2,
         GAMESTATE_BRAGQR = 3,
         GAMESTATE_BRAGSCANNER = 4,
+        GAMESTATE_NETPLAY = 5,
         // --- Quick save
         QUICKSAVE_MODES = [ "OFF", "ON CLOSE", "ALWAYS" ],
         // --- Play mode
@@ -259,8 +273,11 @@ function Game() {
         MONTIMEOUT_NEWLEVEL = 1,
         MONTIMEOUT_NEWTUGOFWAR = 2,
         MONTIMEOUT_AUTODROP = 3,
+        MEVALUATE_NONE = -1,
         MEVALUATE_SCORE = 0,
         MEVALUATE_TIME = 1,
+        MAFTERRECORDING_NONE = -1,
+        MAFTERRECORDING_PLAYBACK = 0,
         GAMEMODES = GameModes(),
         GAMEMODE_DEFAULT = 0,
         SEEDS = 1000000,
@@ -292,7 +309,11 @@ function Game() {
         BRAGBOARD_COLOR = "#7300ff",
         BRAGBOARD_TEXTCOLOR = { r:255, g:255, b:255 },
         BRAGBOARD_BEATENCOLOR = "#333",
-        BRAGBOARD_BEATENTEXTCOLOR = "#999";
+        BRAGBOARD_BEATENTEXTCOLOR = "#999",
+        // --- Netplay
+        NETPLAY = new NetPlay({
+            gameStorage:GAME_LOCALSTORAGE,
+        });
     let
         self,
         SCALE = 1,
@@ -347,6 +368,8 @@ function Game() {
         // --- Score delta effect
         deltaScoreEffect,
         deltaScoreEffectX, deltaScoreEffectY, deltaScoreEffectFont, deltaScoreBlur, deltaScoreSlide,
+        // --- Opponent bar
+        opponentBarX, opponentBarY, opponentBarWidth,
         // --- Intro
         introText,
         // --- Game over
@@ -365,18 +388,24 @@ function Game() {
         isWarning,
         isGameOver,
         isGameRunning,
+        hasHighScores,
         isHighScore,
         progress = [],
         // --- Game serialize
-        latestGameSerialize,
+        latestGameSerialize, quickSaveEnabled,
+        // --- Netplay
+        netPlayCurrentState = 0,
+        netPlayOpponentState = 0,
+        netPlayOpponentGarbage, netPlayOpponentLowestBlankLine,
         // --- Vs. You mode
         vsYouRecordStart, vsYouRecord, vsYouRecordGarbage, vsYouCurrentRecording, vsYouRecordingLength, vsYouPunishmentTrack, vsYouTurn,
         vsYouGarbageTrack, vsYouGarbageTrackStart, vsYouTransitions, vsYouGarbageGivenTotal, vsYouGarbageTrackTotal,
         // --- Garbage
-        garbageTugOfWar, garbageAutoDropAmount, incomingGarbage,
+        garbageTotal, garbageTugOfWar, garbageAutoDropAmount, incomingGarbage,
         // --- Game mode
-        nextGameMode, gameMode,
+        nextGameMode, nextSeed, nextHost, gameMode,
         mEvaluate,
+        mShow,
         mTimeBar,
         mResetTimeOnBlock,
         mNewLevelOnLines,
@@ -385,6 +414,9 @@ function Game() {
         mGameOverOnNoAutoDropBlocks,
         mOnNewBlock,
         mOnTimeout,
+        mAfterRecording,
+        mIsNetPlay,
+        mPausePlayGame,
         // --- Color gems
         colorGems,
         // --- Screen shake
@@ -448,7 +480,8 @@ function Game() {
         // --- BragBoard
         bragWidth, bragHeight, bragX, bragY, bragTextY, bragQr, bragQrX, bragQrY, bragQrWidth, bragQrHeight,
         bragCameraFont, bragCameraX, bragCameraX1, bragCameraTextX, bragCameraY, bragCameraY1, bragCameraTextY, bragCameraWidth, bragCameraHeight,
-        bragCloseCameraX, bragCloseCameraX1, bragCloseCameraTextX, bragCloseCameraY, braClosegCameraY1, bragCloseCameraTextY, bragCloseCameraWidth, bragCloseCameraHeight,
+        // --- Close button
+        closeButtonX, closeButtonX1, closeButtonTextX, closeButtonY, closeButtonY1, closeButtonTextY, closeButtonWidth, closeButtonHeight,
         // --- Screen resize triggers
         oldClientWidth, oldClientHeight,
         // --- Screen canvas
@@ -573,7 +606,7 @@ function Game() {
 
             if (gameMode) {
                 // --- Restore game mode
-                newGame(gameMode, true);
+                newGame(gameMode);
 
                 // --- Restore data
                 playE = data[3];
@@ -646,6 +679,182 @@ function Game() {
         }
         latestGameSerialize = 0;
         return false;
+    }
+
+    // --- Netplay
+
+    function netPlayAbortConnect() {
+        // --- Abort any connection attempt
+        if (NETPLAY.isConnected())
+            netPlayCancelState();
+        else
+            NETPLAY.disconnect();
+        gotoGameState(GAMESTATE_TITLE);
+    }
+
+    function netPlaySendState() {
+        if (NETPLAY.isConnected()) {
+            NETPLAY.send(netPlayCurrentState);
+            if (DEBUG)
+                console.log("NetPlay: Sending state...", JSON.stringify(netPlayCurrentState));
+        } else if (DEBUG)
+            console.log("NetPlay: Disconnected. Will send state later.", JSON.stringify(netPlayCurrentState));
+    }
+
+    function netPlaySetState(s) {
+        if (DEBUG)
+            console.log("NetPlay: Setting state to", JSON.stringify(s));
+        netPlayCurrentState = s;
+        netPlaySendState();
+        netPlayStateChanged();
+    }
+
+    function netPlayCancelState() {
+        netPlaySetState({ s:NETPLAYSIGNAL_CANCELSTATE });
+    }
+
+    function netPlaySendAbort() {
+        if (NETPLAY.isConnected())
+            NETPLAY.send({ s:NETPLAYSIGNAL_ABORT });
+    }
+
+    function netPlayAbort(message) {
+
+        if (DEBUG)
+            console.log("NetPlay: Aborting");
+
+        netPlayCancelState();
+
+        switch (gameState) {
+            case GAMESTATE_NETPLAY:{
+                setNotification(message || ERROR_GENERAL);
+                gotoGameState(GAMESTATE_TITLE);
+                break;
+            }
+            case GAMESTATE_PLAY:{
+                if (!isGameOver) {
+                    endGame();
+                    endRun();
+                    setNotification(message || ERROR_GENERAL);
+                }
+                break;    
+            }
+        }
+
+    }
+
+    function netPlayStateChanged() {
+        if (DEBUG) {
+            console.log("Netplay: states changed");
+            console.log("Netplay: Local:", JSON.stringify(netPlayCurrentState));
+            console.log("Netplay: Remote:", JSON.stringify(netPlayOpponentState));
+        }
+
+        if (
+            netPlayOpponentState &&
+            (netPlayOpponentState.s == NETPLAYSIGNAL_SETSTATE) &&
+            (netPlayCurrentState.s == NETPLAYSIGNAL_SETSTATE)
+        ) {
+            let
+                start = true;
+
+            if (NETPLAY.isRoomModeHost()) {
+                if (DEBUG)
+                    console.log("Netplay: Starting game as HOST...");
+                nextHost = NETPLAY_NEWGAMEHOST;
+            } else {
+                if (DEBUG)
+                    console.log("Netplay: Starting game as GUEST...");
+                nextHost = NETPLAY_NEWGAMEGUEST;
+                nextGameMode = 0;
+                GAMEMODES.list.forEach(mode=>{
+                    if (
+                        (mode.id == netPlayOpponentState.i) &&
+                        (mode.version == netPlayOpponentState.v)
+                    )
+                        nextGameMode = mode;
+                })
+                if (nextGameMode) {
+                    // --- Found game mode/version
+                    nextSeed = netPlayOpponentState.e;
+                } else {
+                    // --- Can't find game mode/version
+                    if (DEBUG)
+                        console.log("Netplay: Can't find HOST requested game mode. Aborting...");
+                    start = false;
+                    netPlayAbort();
+                    netPlaySendAbort();
+                }
+            }
+
+            if (start) {
+                if (DEBUG)
+                    console.log("Netplay: Sending start signal...");
+                NETPLAY.send({ s:NETPLAYSIGNAL_READY });
+            }
+        }
+    }
+
+    function netPlayOnEvent(iserror, event) {
+        if (iserror) {
+            console.log("NetPlay error:", NETPLAY_ERRORS[event]);
+            netPlayAbort();
+        } else {
+            if (DEBUG)
+                console.log("NetPlay event:", NETPLAY_EVENTS[event]);
+
+            if (event == NETPLAY_EVENT_CHANNELOPENED)
+                netPlaySendState();
+        }
+    }
+
+    function netPlayOnData(d) {
+        switch (d.s) {
+            case NETPLAYSIGNAL_CANCELSTATE:{
+                if (DEBUG)
+                    console.log("Netplay: Received CANCELSTATE");
+                netPlayOpponentState = 0;
+                netPlayStateChanged();
+                break;    
+            }
+            case NETPLAYSIGNAL_SETSTATE:{
+                if (DEBUG)
+                    console.log("Netplay: Received SETSTATE to", JSON.stringify(d));
+                netPlayOpponentState = d;
+                netPlayStateChanged();
+                break;
+            }
+            case NETPLAYSIGNAL_READY:{
+                if (DEBUG)
+                    console.log("Netplay: Received READY signal");
+                gotoGameState(GAMESTATE_PLAY);
+                break;
+            }
+            case NETPLAYSIGNAL_ABORT:{
+                if (DEBUG)
+                    console.log("Netplay: Received ABORT signal");
+                netPlayAbort("Other player left");
+                break;
+            }
+            case NETPLAYSIGNAL_DATA:{
+                if (d.g > netPlayOpponentGarbage) {
+                    let
+                        newGarbage = d.g - netPlayOpponentGarbage;
+                    addGarbage(newGarbage);
+                    netPlayOpponentGarbage = d.g;
+                    if (DEBUG)
+                        console.log("NetPlay: Received garbage",newGarbage);
+                }
+                netPlayOpponentLowestBlankLine = d.l;
+                break;
+            }
+            case NETPLAYSIGNAL_LOSE:{
+                if (DEBUG)
+                    console.log("Netplay: Received LOSE signal");
+                gameOver(false);
+                break;
+            }
+        }
     }
 
     // --- Background animations
@@ -730,6 +939,7 @@ function Game() {
                                 label:[ "Quit" ],
                                 onSelect:(menu)=>{
                                     menu.disable();
+                                    netPlaySendAbort();
                                     endGame();
                                     gotoGameState(GAMESTATE_TITLE);
                                 }
@@ -755,34 +965,63 @@ function Game() {
 
         GAMEMODES.list.forEach(mode=>{
             let
-                label;
+                model = GAMEMODES.models[mode.initialize.model],
+                label,
+                brag;
 
-            if (mode.id == settings.lastMode)
-                selectedOption = mainMenu.length;
+            if (!model.mIsNetPlay || NETPLAY_ENABLED) {
 
-            switch (GAMEMODES.models[mode.initialize.model].mEvaluate) {
-                case MEVALUATE_SCORE:{
-                    label = [ mode.label, "HIGH SCORE", settings.stats[mode.id].highScore ];
-                    break;
+                if (mode.id == settings.lastMode)
+                    selectedOption = mainMenu.length;
+
+                if (mode.initialize.hasHighScores) {
+                    switch (model.mEvaluate) {
+                        case MEVALUATE_SCORE:{
+                            label = [ mode.label, "HIGH SCORE", settings.stats[mode.id].highScore ];
+                            break;
+                        }
+                        case MEVALUATE_TIME:{
+                            label = [ mode.label, "BEST TIME", settings.stats[mode.id].highScore ? formatTime(settings.stats[mode.id].highScore) : "---" ];
+                            break;
+                        }
+                    }
+                    brag = BRAGBOARD.getBrag(mode.shortId, settings.stats[mode.id].highScore);
+                } else {
+                    label = [ mode.label ];
+                    if (model.mIsNetPlay)
+                        brag = { label:"Requires NetPlay" };
                 }
-                case MEVALUATE_TIME:{
-                    label = [ mode.label, "BEST TIME", settings.stats[mode.id].highScore ? formatTime(settings.stats[mode.id].highScore) : "---" ];
-                    break;
-                }
+
+                mainMenu.push({
+                    label:label,
+                    brag:brag,
+                    onSelect:(menu)=>{
+                        let
+                            nextState = GAMESTATE_PLAY;
+
+                        nextHost = 0;
+                        nextSeed = randomSeed();
+
+                        if (model.mIsNetPlay)
+                            if (NETPLAY.canStartRoomMode())
+                                nextState = GAMESTATE_NETPLAY;
+                            else {
+                                audio.playAudio(audio.audio.fall);
+                                setNotification("See Netplay options");
+                                nextState = -1;
+                            }
+
+                        if (nextState != -1) {
+                            menu.disable();
+                            settings.lastMode = mode.id;
+                            saveSettings();
+                            nextGameMode = mode;
+                            audio.playAudio(audio.audio.break);
+                            gotoGameState(nextState);
+                        }
+                    }
+                });
             }
-
-            mainMenu.push({
-                label:label,
-                brag:BRAGBOARD.getBrag(mode.shortId, settings.stats[mode.id].highScore),
-                onSelect:(menu)=>{
-                    menu.disable();
-                    settings.lastMode = mode.id;
-                    saveSettings();
-                    nextGameMode = mode;
-                    audio.playAudio(audio.audio.break);
-                    gotoGameState(GAMESTATE_PLAY);
-                }
-            });
         })
         mainMenu.push({
             label:[ "OPTIONS" ],
@@ -805,7 +1044,7 @@ function Game() {
                         let
                             newName;
 
-                        settings.music = !settings.music;
+                        menu.disable();
                         defaultMenuEffect();
 
                         newName = prompt("Insert your BragBoard nickname!", BRAGBOARD.getName());
@@ -825,7 +1064,7 @@ function Game() {
                             if (success)
                                 setNotification("Image copied");
                             else
-                                setNotification("Something went wrong!");
+                                setNotification(ERROR_GENERAL);
                         })
                     }
                 },{
@@ -838,7 +1077,7 @@ function Game() {
                             if (success)
                                 setNotification("Link copied");
                             else
-                                setNotification("Something went wrong!");
+                                setNotification(ERROR_GENERAL);
                         })
                     }
                 },{
@@ -851,7 +1090,7 @@ function Game() {
                             if (success)
                                 setNotification("Downloading");
                             else
-                                setNotification("Something went wrong!");
+                                setNotification(ERROR_GENERAL);
                         })
                     }
                 },{
@@ -905,6 +1144,110 @@ function Game() {
             ];
 
         currentMenu = new Menu(options, 0, defaultMenuEffect, 2, MAINMENU_COLOR, MAINMENU_COLOR_BORDER, MAINMENU_COLOR_TEXT, TITLE_SHADOWCOLOR);
+    }
+
+
+    function gotoNetPlay(parentOption, option) {
+        let
+            options = [
+                {
+                    label:[ NETPLAY.getMode(), "Host <-> Guest" ],
+                    onSelect:()=>{
+                        audio.playAudio(audio.audio.garbage);
+                        setNotification(NETPLAY.getMode()+", sorry!");
+                    }
+                },
+                {
+                    label:[ "Mode", NETPLAY.isRoomModeHost() ? "Host" : "Guest" ],
+                    onSelect:(menu, option)=>{
+                        defaultMenuEffect();
+                        NETPLAY.disconnect();
+                        NETPLAY.setRoomModeHost(!NETPLAY.isRoomModeHost());
+                        gotoNetPlay(parentOption, option);
+                    }
+                }
+            ];
+
+        if (NETPLAY.isRoomModeHost()) {
+            options.push({
+                label:[ "Host room ID", NETPLAY.getHostRoomId() || "Get one!" ],
+                onSelect:(menu, option)=>{
+                    menu.disable();
+                    defaultMenuEffect();
+                    NETPLAY.disconnect();
+                    NETPLAY.setHostRoomId((iserror, data)=>{
+                        if (iserror) {
+                            setNotification(ERROR_GENERAL);
+                            menu.enable();
+                        } else {
+                            setNotification("Room: "+data);
+                            gotoNetPlay(parentOption, option);
+                        }
+                        
+                    })
+                }
+            });
+            if (NETPLAY.getHostRoomId()) {
+                options.push({
+                    label:[ "Copy host room ID", "Send to guest" ],
+                    onSelect:(menu, option)=>{
+                        menu.disable();
+                        defaultMenuEffect();
+                        NETPLAY.copyHostRoomId((success)=>{
+                            menu.enable();
+                            if (success)
+                                setNotification("Host room copied");
+                            else
+                                setNotification(ERROR_GENERAL);
+                        })
+                    }
+                });
+                options.push({
+                    label:[ "Copy host link", "Send to guest" ],
+                    onSelect:(menu, option)=>{
+                        menu.disable();
+                        defaultMenuEffect();
+                        NETPLAY.copyHostRoomLink((success)=>{
+                            menu.enable();
+                            if (success)
+                                setNotification("Host link copied");
+                            else
+                                setNotification(ERROR_GENERAL);
+                        })
+                    }
+                });
+            }
+        } else {
+            options.push({
+                label:[ "Host room ID", NETPLAY.getGuestRoomId() || "Input one!" ],
+                onSelect:(menu, option)=>{
+                    let
+                        newName;
+
+                    menu.disable();
+                    defaultMenuEffect();
+                    NETPLAY.disconnect();
+
+                    newName = prompt("Insert your friend's Host room ID. You can also ask a Host link, open it, and automatically configure your NetPlay settings.", NETPLAY.getGuestRoomId());
+                    if (newName) {
+                        NETPLAY.setGuestRoomId(newName);
+                        gotoNetPlay(parentOption, option);
+                    } else
+                        menu.enable();
+                }
+            });
+        }
+
+        options.push({
+            label:[ "BACK" ],
+            isBackOption:true,
+            onSelect:(menu, option)=>{
+                audio.playAudio(audio.audio.fall);
+                gotoOptions(parentOption);
+            }
+        });
+
+        currentMenu = new Menu(options, option || 0, defaultMenuEffect, 2, MAINMENU_COLOR, MAINMENU_COLOR_BORDER, MAINMENU_COLOR_TEXT, TITLE_SHADOWCOLOR);
     }
 
     function gotoOptions(option) {
@@ -991,7 +1334,7 @@ function Game() {
                         menu.disable();
                         if (confirm("Do you want to delete all your high scores? This action cannot be undone.")) {
                             GAMEMODES.list.forEach((mode,id)=>{
-                                resetHighScore(mode);
+                                resetGameMode(mode);
                             })
                             saveSettings();
                             setTimeout(()=>{
@@ -1003,6 +1346,15 @@ function Game() {
                     }
                 }
             ];
+
+        if (NETPLAY_ENABLED)
+            options.push({
+                label:[ "Netplay" ],
+                onSelect:(menu, option)=>{
+                    defaultMenuEffect();
+                    gotoNetPlay(option);
+                }
+            });
 
         if (showInstaller)
             options.push({
@@ -1061,6 +1413,23 @@ function Game() {
         });
 
         currentMenu = new Menu(options, option, defaultMenuEffect, 2, MAINMENU_COLOR, MAINMENU_COLOR_BORDER, MAINMENU_COLOR_TEXT, TITLE_SHADOWCOLOR);
+    }
+
+    // --- Garbage
+
+    function limitIncomingGarbage() {
+        if (garbageLimit)
+            incomingGarbage = Math.max(0, Math.min(garbageLimit, garbageTugOfWar));
+        else
+            incomingGarbage = Math.max(0, garbageTugOfWar);
+    }
+
+    function addGarbage(v) {
+        garbageTugOfWar += v;
+        limitIncomingGarbage();
+        showDeltaScore("+"+v+" garbage");
+        if (incomingGarbage > 0)
+            audio.playAudio(audio.audio.garbage);
     }
 
     // --- Render
@@ -1142,7 +1511,7 @@ function Game() {
 
         updateControls();
 
-        if (isNotPaused && e) {
+        if ((isNotPaused || mPausePlayGame) && e) {
             
             if (timeStartE) {
                 let
@@ -1200,6 +1569,28 @@ function Game() {
                 ctx.drawImage(bragQr, bragQrX, bragQrY, bragQrWidth, bragQrHeight);
                 break;
             }
+            case GAMESTATE_NETPLAY:{
+                if (gameE > NETPLAY_SCREENDELAY) {
+                    ctx.textBaseline = "middle";
+                    ctx.textAlign = "center";
+
+                    ctx.font = footerFont;
+                    ctx.shadowBlur = TITLE_COLOR;
+                    ctx.shadowColor = ctx.fillStyle = TITLE_COLOR;
+                    ctx.fillText("Connecting...", loadingX, loadingY);
+
+                    ctx.shadowColor = BRAGCAMERA_SHADOW;
+                    ctx.shadowBlur = scoreBlur;
+                    ctx.shadowColor = ctx.fillStyle = BRAGCAMERA_COLOR;
+                    ctx.fillRect(closeButtonX, closeButtonY, closeButtonWidth, closeButtonHeight);
+
+                    ctx.font = bragCameraFont;
+                    ctx.shadowBlur = 0;
+                    ctx.fillStyle = BRAGCAMERA_TEXTCOLOR;
+                    ctx.fillText(BRAGCAMERA_EXITLABEL, closeButtonTextX, closeButtonTextY);
+                }
+                break;
+            }
             case GAMESTATE_BRAGSCANNER:{
                 let
                     result = BRAGBOARD.scannerOnFrame(canvas, ctx);
@@ -1216,7 +1607,7 @@ function Game() {
                 ctx.shadowBlur = scoreBlur;
                 ctx.shadowColor = ctx.fillStyle = BRAGCAMERA_COLOR;
                 ctx.fillRect(bragCameraX ,bragCameraY, bragCameraWidth, bragCameraHeight);
-                ctx.fillRect(bragCloseCameraX, bragCloseCameraY, bragCloseCameraWidth, bragCloseCameraHeight);
+                ctx.fillRect(closeButtonX, closeButtonY, closeButtonWidth, closeButtonHeight);
 
                 ctx.font = bragCameraFont;
                 ctx.textBaseline = "middle";
@@ -1225,7 +1616,7 @@ function Game() {
                 ctx.fillStyle = BRAGCAMERA_TEXTCOLOR;
 
                 ctx.fillText(BRAGCAMERA_NEXTCAMERALABEL, bragCameraTextX, bragCameraTextY)
-                ctx.fillText(BRAGCAMERA_EXITLABEL, bragCloseCameraTextX, bragCloseCameraTextY)
+                ctx.fillText(BRAGCAMERA_EXITLABEL, closeButtonTextX, closeButtonTextY)
 
                 break;
             }
@@ -1362,24 +1753,6 @@ function Game() {
                 ctx.fillStyle = footerbarColor;
                 ctx.fillRect(footerbarInnerX,footerbarInnerY,footerbarInnerWidth,footerbarInnerHeight);
 
-                if (isGameOver) {
-                    ctx.fillStyle = ctx.shadowColor = paletteToRGBA(gameoverColorBorder, gameoverProgress);
-                    ctx.fillRect(endgameLines.x,endgameLines.y,endgameLines.width,endgameLines.height);
-                    ctx.fillStyle = ctx.shadowColor = paletteToRGBA(gameoverColor, gameoverProgress)
-                    ctx.fillRect(endgameLines.innerX,endgameLines.innerY,endgameLines.innerWidth,endgameLines.innerHeight);
-                } else if (isButtonMode) {
-                    let
-                        isDrag = state == 1,
-                        gap = cursorPulse*Math.sin(gameE * (isDrag ? CURSOR_PULSEDRAG : CURSOR_PULSENORMAL)),
-                        width = cellWidth+(gap*2),
-                        height = cellHeight+(gap*2);
-
-                    ctx.strokeStyle = isDrag ? cursorColorDrag : cursorColor;
-                    ctx.shadowColor = CURSOR_SHADOW;
-                    ctx.lineWidth = cursorSize;
-                    ctx.strokeRect(gridX + cursorX * cellWidth - gap, gridY + cursorY * cellHeight - gap, width, height);
-                }
-
                 timePassed = playE - nextBlockStart;
                 timeRatio = 1-(timePassed/timeLimit);
 
@@ -1387,31 +1760,41 @@ function Game() {
                 if (timePassed < timeLimit) {
                     if (timebarHeight) {
                         let
-                            color;
+                            color,
+                            opponentColor;
 
                         switch (mTimeBar) {
                             case MTIMEBAR_TIMELIMIT:{
                                 if (timeLimitIsFall)
-                                    color = paletteToRGBA(timebarColorCritical,(0.7+Math.sin(timePassed/timeRatio*0.002)*0.3));
+                                    opponentColor = color = paletteToRGBA(timebarColorCritical,(0.7+Math.sin(timePassed/timeRatio*0.002)*0.3));
                                 else
-                                    color = paletteToRGBA(timebarColor, (0.1+(timeRatio*0.9)));
+                                    opponentColor = color = paletteToRGBA(timebarColor, (0.1+(timeRatio*0.9)));
                                 break;
                             }
                             case MTIMEBAR_ROUNDLIMIT:{
-                                color = paletteToRGBA(timebarColorCritical,(0.7+Math.sin(timePassed/timeRatio*0.002)*0.3));
+                                opponentColor = color = paletteToRGBA(timebarColorCritical,(0.7+Math.sin(timePassed/timeRatio*0.002)*0.3));
                                 break;
                             }
                             case MTIMEBAR_TUGOFWARLIMIT:{
                                 if (garbageTugOfWar > 0)
-                                    color = paletteToRGBA(timebarColorCritical,(0.7+Math.sin(timePassed/timeRatio*0.002)*0.3));
-                                else
+                                    opponentColor = color = paletteToRGBA(timebarColorCritical,(0.7+Math.sin(timePassed/timeRatio*0.002)*0.3));
+                                else {
+                                    opponentColor = paletteToRGBA(timebarColor,(0.7+Math.sin(playE*0.002)*0.3));
                                     color = paletteToRGBA(timebarColor, (0.1+(timeRatio*0.9)));
+                                }
                                 break;
                             }
                         }
 
                         ctx.fillStyle = ctx.shadowColor = color;
                         ctx.fillRect(timebarX,timebarY,Math.floor(timebarWidth*timeRatio),timebarHeight);
+
+                        if (netPlayOpponentLowestBlankLine) {
+                            let
+                                barHeight = cellHeight * netPlayOpponentLowestBlankLine;
+                            ctx.fillStyle = ctx.shadowColor = opponentColor;
+                            ctx.fillRect(opponentBarX,opponentBarY-barHeight,opponentBarWidth,barHeight);
+                        }
                     }
                 } else {
 
@@ -1454,7 +1837,7 @@ function Game() {
 
                                     vsYouCurrentRecording = 0;
                                     vsYouGarbageTrackStart = playE;
-                                    if (vsYouRecordGarbage == 0) {
+                                    if ((vsYouRecordGarbage == 0) && vsYouPunishmentTrack) {
                                         // --- Punish bad play
                                         vsYouGarbageTrack = [];
                                         vsYouPunishmentTrack.forEach((garbage)=>{
@@ -1472,7 +1855,8 @@ function Game() {
                                             newLevelSound = false;
                                         }
                                         // --- Play last recording
-                                        vsYouGarbageTrack = vsYouRecord;
+                                        if (mAfterRecording == MAFTERRECORDING_PLAYBACK)
+                                            vsYouGarbageTrack = vsYouRecord;
                                     }
                                     vsYouRecord = [];
                                     vsYouRecordStart = playE;
@@ -1480,8 +1864,10 @@ function Game() {
                                     vsYouGarbageTrackTotal = 0;
                                     vsYouGarbageGivenTotal = 0;
                                     // --- Change background
-                                    vsYouTurn = (vsYouTurn + 1) % 2;
-                                    runEvent(vsYouTransitions[vsYouTurn]);
+                                    if (vsYouTransitions) {
+                                        vsYouTurn = (vsYouTurn + 1) % 2;
+                                        runEvent(vsYouTransitions[vsYouTurn]);
+                                    }
                                     // --- New level
                                     newLevel(false, newLevelSound);
                                     checkProgress(true, false);
@@ -1497,7 +1883,24 @@ function Game() {
                             }
                         }
                     }
+                }
 
+                if (isGameOver) {
+                    ctx.fillStyle = ctx.shadowColor = paletteToRGBA(gameoverColorBorder, gameoverProgress);
+                    ctx.fillRect(endgameLines.x,endgameLines.y,endgameLines.width,endgameLines.height);
+                    ctx.fillStyle = ctx.shadowColor = paletteToRGBA(gameoverColor, gameoverProgress)
+                    ctx.fillRect(endgameLines.innerX,endgameLines.innerY,endgameLines.innerWidth,endgameLines.innerHeight);
+                } else if (isButtonMode) {
+                    let
+                        isDrag = state == 1,
+                        gap = cursorPulse*Math.sin(gameE * (isDrag ? CURSOR_PULSEDRAG : CURSOR_PULSENORMAL)),
+                        width = cellWidth+(gap*2),
+                        height = cellHeight+(gap*2);
+
+                    ctx.strokeStyle = isDrag ? cursorColorDrag : cursorColor;
+                    ctx.shadowColor = CURSOR_SHADOW;
+                    ctx.lineWidth = cursorSize;
+                    ctx.strokeRect(gridX + cursorX * cellWidth - gap, gridY + cursorY * cellHeight - gap, width, height);
                 }
 
                 // --- Manage garbage
@@ -1518,13 +1921,8 @@ function Game() {
                             break;
                     }
 
-                    if (addedGarbage) {
-                        garbageTugOfWar += addedGarbage;
-                        incomingGarbage = Math.max(0, Math.min(garbageLimit, garbageTugOfWar));
-                        showDeltaScore("+"+addedGarbage+" garbage");
-                        if (incomingGarbage > 0)
-                            audio.playAudio(audio.audio.garbage);
-                    }
+                    if (addedGarbage)
+                        addGarbage(addedGarbage);
                 }
 
                 // Text
@@ -1537,7 +1935,7 @@ function Game() {
                 ctx.shadowColor = ctx.fillStyle = paletteToRGB(footerbarColorText);
 
                 if (!scoreComment)
-                    switch (mEvaluate) {
+                    switch (mShow) {
                         case MEVALUATE_SCORE:{
                             ctx.fillText(score, scoreX, scoreY);
                             break;
@@ -1641,8 +2039,17 @@ function Game() {
                             case GAMESTATE_PLAY:{
                                 currentMenu = 0;
                                 // --- Start the game
-                                newGame(nextGameMode);
+                                quickSaveClear();
+                                newGame(nextGameMode, nextSeed, nextHost);
                                 gameTurn();
+                                break;
+                            }
+                            case GAMESTATE_NETPLAY:{
+                                currentMenu = 0;
+                                gameE = 0;
+                                netPlaySetState({ s:NETPLAYSIGNAL_SETSTATE, e:nextSeed, i:nextGameMode.id, v:nextGameMode.version });
+                                if (!NETPLAY.isConnected())
+                                    NETPLAY.startRoomMode();
                                 break;
                             }
                         }
@@ -1750,25 +2157,30 @@ function Game() {
         }
     }
 
+    function quickSaveClear() {
+        delete localStorage[GAME_STATE_LOCALSTORAGE];
+    }
+
     function quickSave() {
         if (!isGameRunning || !settings.saveState)
-            delete localStorage[GAME_STATE_LOCALSTORAGE];
-        else
+            quickSaveClear();
+        else if (quickSaveEnabled)
             localStorage[GAME_STATE_LOCALSTORAGE] = JSON.stringify(latestGameSerialize);
     }
 
     function autoSave() {
-        if (settings.saveState) {
+        if (quickSaveEnabled && settings.saveState) {
             latestGameSerialize = serializeGame();
             if (settings.saveState == 2)
                 quickSave();
         }
     }
     
-    function resetHighScore(mode) {
+    function resetGameMode(mode) {
         if (!settings.stats[mode.id])
             settings.stats[mode.id] = {};
-        settings.stats[mode.id].highScore = 0;
+        if (mode.initialize.hasHighScores)
+            settings.stats[mode.id].highScore = 0;
         settings.stats[mode.id].version = mode.version;
     }
 
@@ -1787,10 +2199,15 @@ function Game() {
 
     // --- Game flow
 
-    function newGame(mode) {
+    function randomSeed() {
+        return 1+Math.floor(Math.random()*SEEDS);
+    }
+
+    function newGame(mode, seed, hostguest) {
         let
-            seed,
-            gameModeModel;
+            gameModeModel,
+            setIdleStyle,
+            setBackgroundAnimation;
 
         // --- Load game mode
         gameMode = mode;
@@ -1801,15 +2218,20 @@ function Game() {
         mNewLevelOnLines = gameModeModel.mNewLevelOnLines;
         mProgressOnLines = gameModeModel.mProgressOnLines;
         mEvaluate = gameModeModel.mEvaluate;
+        mShow = gameModeModel.mShow;
         mGameOverOnNoBlocks = gameModeModel.mGameOverOnNoBlocks;
         mGameOverOnNoAutoDropBlocks = gameModeModel.mGameOverOnNoAutoDropBlocks;
         mOnNewBlock = gameModeModel.mOnNewBlock;
         mOnTimeout = gameModeModel.mOnTimeout;
+        mAfterRecording = gameModeModel.mAfterRecording;
+        mIsNetPlay = gameModeModel.mIsNetPlay;
+        mPausePlayGame = gameModeModel.mPausePlayGame;
 
-        if (mode.seed)
-            seed = mode.seed;
-        else
-            seed = 1+Math.floor(Math.random()*SEEDS);
+        if (!seed)
+            if (mode.seed)
+                seed = mode.seed;
+            else
+                seed = randomSeed();
         field = new Field(mode.initialize.fieldWidth, mode.initialize.fieldHeight);
         lowestLine = field.height-1;
         next = new Next(seed);
@@ -1822,14 +2244,8 @@ function Game() {
         garbageNext.setColors(mode.initialize.setGarbageColors);
         random = new Random(seed);
         fieldEffects = new FieldEffects(false, true, field);
-        fieldEffects.setIdleColors(
-            mode.initialize.setIdleStyle[0],
-            mode.initialize.setIdleStyle[1],
-            mode.initialize.setIdleStyle[2],
-            mode.initialize.setIdleStyle[3],
-            mode.initialize.setIdleStyle[4],
-            mode.initialize.setIdleStyle[5]
-        );
+        setIdleStyle = mode.initialize.setIdleStyle;
+        setBackgroundAnimation = mode.initialize.setBackgroundAnimation;
         overFieldEffects = new FieldEffects(true, false, field);
         nextMusic = mode.initialize.playMusic;
         autoDrops = mode.initialize.autoDrop;
@@ -1876,13 +2292,37 @@ function Game() {
         gameoverSound = mode.initialize.gameoverSound;
         timeLimitPoints = mode.initialize.timeLimitPoints;
         colorGems = mode.initialize.colorGems;
-        
+        hasHighScores = mode.initialize.hasHighScores;
+        quickSaveEnabled = mode.initialize.quickSaveEnabled;
+
+        switch (hostguest) {
+            case NETPLAY_NEWGAMEHOST:{
+                setIdleStyle = mode.initialize.hostSettings.setIdleStyle;
+                setBackgroundAnimation = mode.initialize.hostSettings.setBackgroundAnimation;
+                break;
+            }
+            case NETPLAY_NEWGAMEGUEST:{
+                setIdleStyle = mode.initialize.guestSettings.setIdleStyle;
+                setBackgroundAnimation = mode.initialize.guestSettings.setBackgroundAnimation;
+                break;
+            }
+        }
+
         setPalette(mode.initialize.palette);
 
-        if (mode.initialize.setBackgroundAnimation === undefined)
+        fieldEffects.setIdleColors(
+            setIdleStyle[0],
+            setIdleStyle[1],
+            setIdleStyle[2],
+            setIdleStyle[3],
+            setIdleStyle[4],
+            setIdleStyle[5]
+        );
+    
+        if (setBackgroundAnimation === undefined)
             isBackgroundAnimated = false;
         else {
-            backgroundAnimation.start(mode.initialize.setBackgroundAnimation);
+            backgroundAnimation.start(setBackgroundAnimation);
             isBackgroundAnimated = true;
         }
         
@@ -1904,6 +2344,7 @@ function Game() {
         isHighScore = false;
         isNotPaused = true;
         timeStartE = 0;
+        garbageTotal = 0;
         garbageTugOfWar = 0;
         incomingGarbage = 0;
         vsYouRecord = [];
@@ -1928,6 +2369,11 @@ function Game() {
         isQuickDropAvailable = false;
         quickDropE = 0;
         endgameLines = 0;
+        netPlayOpponentGarbage = 0;
+        netPlayOpponentLowestBlankLine = 0;
+        movingBlock = 0;
+        shadowBlock = 0;
+        state = 0;
         mode.progress.forEach((_,id)=>{
             progress[id] = { lines:0, random:new Random(seed+id) };
         })
@@ -1949,13 +2395,16 @@ function Game() {
 
     function endGame() {
         audio.stopMusic();
+        currentMenu = 0;
         isInteractive = false;
         isWarning = false;
         isPlayNotPaused = false;
         isGameRunning = false;
+        isNotPaused = true;
         if (settings.saveState == 2)
             quickSave();
         resetScheduler();
+        netPlayCancelState();
     }
 
     function gameOver(failed) {
@@ -1964,34 +2413,44 @@ function Game() {
         enableHitAt = gameE + 500;
         gameoverStart = gameE;
         endGame();
-        switch (mEvaluate) {
-            case MEVALUATE_SCORE:{
-                if (score > settings.stats[gameMode.id].highScore) {
-                    settings.stats[gameMode.id].highScore = score;
-                    isHighScore = true;
-                    saveSettings();
-                }
-                audio.playAudio(audio.audio[gameoverSound]);
-                endgameLines = gameoverLines;
-                break;
-            }
-            case MEVALUATE_TIME:{
-                if (failed) {
-                    audio.playAudio(audio.audio[gameoverSound]);
-                    endgameLines = gameoverLines;
-                } else {
-                    if (!settings.stats[gameMode.id].highScore || (playE < settings.stats[gameMode.id].highScore)) {
-                        settings.stats[gameMode.id].highScore = playE;
+        if (hasHighScores)
+            switch (mEvaluate) {
+                case MEVALUATE_SCORE:{
+                    if (score > settings.stats[gameMode.id].highScore) {
+                        settings.stats[gameMode.id].highScore = score;
                         isHighScore = true;
                         saveSettings();
                     }
-                    audio.playAudio(audio.audio.perfect);
-                    endgameLines = gameclearLines;
+                    audio.playAudio(audio.audio[gameoverSound]);
+                    endgameLines = gameoverLines;
+                    break;
                 }
-                break;
+                case MEVALUATE_TIME:{
+                    if (failed) {
+                        audio.playAudio(audio.audio[gameoverSound]);
+                        endgameLines = gameoverLines;
+                    } else {
+                        if (!settings.stats[gameMode.id].highScore || (playE < settings.stats[gameMode.id].highScore)) {
+                            settings.stats[gameMode.id].highScore = playE;
+                            isHighScore = true;
+                            saveSettings();
+                        }
+                        audio.playAudio(audio.audio.perfect);
+                        endgameLines = gameclearLines;
+                    }
+                    break;
+                }
             }
-        }
-        
+        else
+            if (failed) {
+                audio.playAudio(audio.audio[gameoverSound]);
+                endgameLines = gameoverLines;
+            } else {
+                audio.playAudio(audio.audio.perfect);
+                endgameLines = gameclearLines;
+            }
+        if (mIsNetPlay)
+            NETPLAY.send({ s:failed ? NETPLAYSIGNAL_LOSE : NETPLAYSIGNAL_WIN })
     }
 
     function doQuickDrop() {
@@ -2356,7 +2815,8 @@ function Game() {
                             vsYouRecord.push([ playE-vsYouRecordStart, power ]);
                             garbageTugOfWar -= power;
                             vsYouRecordGarbage += power;
-                            incomingGarbage = Math.max(0, Math.min(garbageLimit, garbageTugOfWar));
+                            garbageTotal += power;
+                            limitIncomingGarbage();
                         }
                         break;
                     }
@@ -2431,6 +2891,8 @@ function Game() {
                             audio.playMusic(audio.audio[nextMusic]);
                         }
                     }
+                    if (mIsNetPlay)
+                        NETPLAY.send({ s:NETPLAYSIGNAL_DATA, g:garbageTotal, l:field.height-lowestBlankLine-1 });
                 }
             }
         }
@@ -2544,6 +3006,11 @@ function Game() {
                 boardHeight += boardY;
                 boardY = 0;
             }
+
+            // --- Opponent bar
+            opponentBarX = gridX+fieldWidth;
+            opponentBarY = gridY+fieldHeight;
+            opponentBarWidth = timebarHeight;
 
             // --- Particles
             particleSize = pixelSize*2;
@@ -2668,14 +3135,14 @@ function Game() {
             bragCameraTextX = bragCameraX+Math.floor(bragCameraWidth/2);
             bragCameraTextY = bragCameraY+Math.floor(bragCameraHeight/2);
 
-            bragCloseCameraWidth = pixelSize * BRAGCAMERA_BUTTONSIZE;
-            bragCloseCameraHeight = bragCameraWidth;
-            bragCloseCameraX = canvasWidth-padding-bragCloseCameraWidth;
-            bragCloseCameraY = padding;
-            bragCloseCameraX1 = bragCloseCameraX+bragCloseCameraWidth;
-            bragCloseCameraY1 = bragCloseCameraY+bragCloseCameraHeight;
-            bragCloseCameraTextX = bragCloseCameraX+Math.floor(bragCloseCameraWidth/2);
-            bragCloseCameraTextY = bragCloseCameraY+Math.floor(bragCloseCameraHeight/2);
+            closeButtonWidth = pixelSize * BRAGCAMERA_BUTTONSIZE;
+            closeButtonHeight = bragCameraWidth;
+            closeButtonX = canvasWidth-padding-closeButtonWidth;
+            closeButtonY = padding;
+            closeButtonX1 = closeButtonX+closeButtonWidth;
+            closeButtonY1 = closeButtonY+closeButtonHeight;
+            closeButtonTextX = closeButtonX+Math.floor(closeButtonWidth/2);
+            closeButtonTextY = closeButtonY+Math.floor(closeButtonHeight/2);
 
             // --- Credits
             creditsFontSize = Math.max(MIN_FONTSIZE,Math.floor(hPixelSize*CREDITS_FONTSIZE));
@@ -2852,9 +3319,18 @@ function Game() {
                             bragScannerChange();
                         break;
                     }
+                    case GAMESTATE_NETPLAY:{
+                        if (
+                            !isTransitionState &&
+                            gameE > NETPLAY_SCREENDELAY &&
+                            (button == BUTTON_BACK)
+                        )
+                            netPlayAbortConnect();
+                        break;
+                    }
                 }
         } else {
-            if (!menuDragE && (state == 1) && (button == BUTTON_DRAG)) {
+            if (!menuDragE && (state == 1) && isInteractive && (button == BUTTON_DRAG)) {
                 playerDrop();
             }
         }
@@ -2949,12 +3425,24 @@ function Game() {
                     )
                         bragScannerChange();
                     else if (
-                        (pointerX > bragCloseCameraX) &&
-                        (pointerX < bragCloseCameraX1) &&
-                        (pointerY > bragCloseCameraY) &&
-                        (pointerY < bragCloseCameraY1)
+                        (pointerX > closeButtonX) &&
+                        (pointerX < closeButtonX1) &&
+                        (pointerY > closeButtonY) &&
+                        (pointerY < closeButtonY1)
                     )
                         bragScannerClose();
+                    break;
+                }
+                case GAMESTATE_NETPLAY:{
+                    if (
+                        !isTransitionState &&
+                        gameE > NETPLAY_SCREENDELAY &&
+                        (pointerX > closeButtonX) &&
+                        (pointerX < closeButtonX1) &&
+                        (pointerY > closeButtonY) &&
+                        (pointerY < closeButtonY1)
+                    )
+                        netPlayAbortConnect();
                     break;
                 }
             }
@@ -3036,7 +3524,7 @@ function Game() {
             if (currentMenu && menuMaySelect && (lastE - menuDragE < MENU_TAPTIMING))
                 currentMenu.select();
             menuDragE = 0;
-        } else {
+        } else if (isInteractive) {
             switch (state) {
                 case 1:{
                     // Moving block
@@ -3253,13 +3741,13 @@ function Game() {
             settings.bganimations = true;
 
         GAMEMODES.list.forEach((mode,id)=>{
-            if (!settings.stats[mode.id] || (settings.stats[mode.id].highScore === undefined))
-                resetHighScore(mode);
+            if (!settings.stats[mode.id] || (mode.initialize.hasHighScores && (settings.stats[mode.id].highScore === undefined)))
+                resetGameMode(mode);
             if (!settings.stats[mode.id].version)
                 settings.stats[mode.id].version = 1;
             // --- Delete highscores if from a different version. Sorry!
             if (settings.stats[mode.id].version != mode.version)
-                resetHighScore(mode);
+                resetGameMode(mode);
         })
 
     }
@@ -3318,16 +3806,31 @@ function Game() {
                 loadingLoaded = b;
             },()=>{
                 let
-                    bragBoardInit = BRAGBOARD.initialize();
+                    bragBoardInit,
+                    message;
 
-                if (bragBoardInit.message)
-                    setNotification(bragBoardInit.message);
+                // --- Initialize Installer
 
                 if (window.Installer)
                     Installer.check(()=>{
                         showInstaller = true;
                     });
 
+                // --- Initialize BragBoard
+
+                bragBoardInit = BRAGBOARD.initialize();
+
+                if (bragBoardInit.message)
+                    setNotification(bragBoardInit.message);
+
+                // --- Initialize NetPlay
+                message = NETPLAY.initialize(netPlayOnEvent, netPlayOnData);
+                netPlayCancelState();
+
+                if (message)
+                    setNotification(message);
+
+                // --- Restore saved state
                 if (settings.saveState && localStorage[GAME_STATE_LOCALSTORAGE]) {
                     let
                         data;

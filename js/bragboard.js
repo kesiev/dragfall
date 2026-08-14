@@ -95,11 +95,12 @@ function BragBoard(settings) {
                 modeId = mode.id,
                 model = settings.gameModes.models[mode.initialize.model];
 
-            scores.push({
-                v: mode.version,
-                i: mode.shortId,
-                s:stats[modeId].highScore || 0
-            })
+            if (mode.initialize.hasHighScores)
+                scores.push({
+                    v: mode.version,
+                    i: mode.shortId,
+                    s:stats[modeId].highScore || 0
+                })
         })
 
         return {

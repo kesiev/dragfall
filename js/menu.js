@@ -151,7 +151,7 @@ function Menu(options, selectedOption, onchange, lines, color1, color2, colorfon
                     ctx.fillStyle = currentOption.brag.beaten ? bragbeatencolor : bragcolor;
                     ctx.fillRect(bragx, y, bragwidth, bragheight);
                     ctx.fillStyle = currentOption.brag.beaten ? bragbeatentextcolor : "rgba("+bragtextcolor.r+","+bragtextcolor.g+","+bragtextcolor.b+","+glow+")";
-                    ctx.fillText(currentOption.brag.player+": "+currentOption.brag.score,centerX, y+bragtexty);
+                    ctx.fillText(currentOption.brag.label || (currentOption.brag.player+": "+currentOption.brag.score),centerX, y+bragtexty);
                 }
 
             }

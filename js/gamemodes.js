@@ -126,6 +126,28 @@ function GameModes() {
             { fontSize:7, text:"< HIT ANYWHERE >", blink:true },
             { fontSize:7, text:"< TO CONTINUE >", blink:true }
         ],
+        GAMEOVER_YOULOSE = [
+            { fontSize:13, text:"YOU LOSE", blink:true },
+            { spacing:7 },
+            { fontSize:7, text:"LEVEL" },
+            { fontSize:7, level:true },
+            { fontSize:7, text:"LINES" },
+            { fontSize:7, lines:true },
+            { spacing:7 },
+            { fontSize:7, text:"< HIT ANYWHERE >", blink:true },
+            { fontSize:7, text:"< TO CONTINUE >", blink:true }
+        ],
+        GAMEOVER_YOUWIN = [
+            { fontSize:13, text:"YOU WIN", blink:true },
+            { spacing:7 },
+            { fontSize:7, text:"LEVEL" },
+            { fontSize:7, level:true },
+            { fontSize:7, text:"LINES" },
+            { fontSize:7, lines:true },
+            { spacing:7 },
+            { fontSize:7, text:"< HIT ANYWHERE >", blink:true },
+            { fontSize:7, text:"< TO CONTINUE >", blink:true }
+        ],
         GAMEOVER_CHILL = [
             { fontSize:13, text:"GOODBYE!", blink:true },
             { fontSize:7, highScore:"< NEW HIGH SCORE >", blink:true },
@@ -283,13 +305,17 @@ function GameModes() {
         MONTIMEOUT_NEWLEVEL = 1,
         MONTIMEOUT_NEWTUGOFWAR = 2,
         MONTIMEOUT_AUTODROP = 3,
+        MEVALUATE_NONE = -1,
         MEVALUATE_SCORE = 0,
-        MEVALUATE_TIME = 1;
+        MEVALUATE_TIME = 1,
+        MAFTERRECORDING_NONE = -1,
+        MAFTERRECORDING_PLAYBACK = 0;
 
     return {
         models:{
             standard:{
                 mEvaluate:MEVALUATE_SCORE,
+                mShow:MEVALUATE_SCORE,
                 mTimeBar:MTIMEBAR_TIMELIMIT,
                 mResetTimeOnBlock:true,
                 mNewLevelOnLines:true,
@@ -300,6 +326,7 @@ function GameModes() {
             },
             survival:{
                 mEvaluate:MEVALUATE_SCORE,
+                mShow:MEVALUATE_SCORE,
                 mTimeBar:MTIMEBAR_ROUNDLIMIT,
                 mGameOverOnNoAutoDropBlocks:true,
                 mOnNewBlock:MONNEWBLOCK_CHECKNEWROUNDSTART,
@@ -307,14 +334,17 @@ function GameModes() {
             },
             vsYou:{
                 mEvaluate:MEVALUATE_SCORE,
+                mShow:MEVALUATE_SCORE,
                 mTimeBar:MTIMEBAR_TUGOFWARLIMIT,
                 mProgressOnLines:true,
                 mGameOverOnNoBlocks:true,
                 mOnNewBlock:MONNEWBLOCK_COLLECTGARBAGE,
-                mOnTimeout:MONTIMEOUT_NEWTUGOFWAR
+                mOnTimeout:MONTIMEOUT_NEWTUGOFWAR,
+                mAfterRecording:MAFTERRECORDING_PLAYBACK
             },
             chill:{
                 mEvaluate:MEVALUATE_SCORE,
+                mShow:MEVALUATE_SCORE,
                 mTimeBar:MTIMEBAR_NONE,
                 mProgressOnLines:true,
                 mGameOverOnNoAutoDropBlocks:true,
@@ -323,12 +353,25 @@ function GameModes() {
             },
             timed:{
                 mEvaluate:MEVALUATE_TIME,
+                mShow:MEVALUATE_TIME,
                 mTimeBar:MTIMEBAR_TIMELIMIT,
                 mResetTimeOnBlock:true,
                 mProgressOnLines:true,
                 mGameOverOnNoBlocks:true,
                 mOnNewBlock:MONNEWBLOCK_NEWTIMELIMIT,
                 mOnTimeout:MONTIMEOUT_AUTODROP,
+            },
+            netPlay:{
+                mEvaluate:MEVALUATE_NONE,
+                mShow:MEVALUATE_SCORE,
+                mTimeBar:MTIMEBAR_TUGOFWARLIMIT,
+                mProgressOnLines:true,
+                mGameOverOnNoBlocks:true,
+                mOnNewBlock:MONNEWBLOCK_COLLECTGARBAGE,
+                mOnTimeout:MONTIMEOUT_NEWTUGOFWAR,
+                mAfterRecording:MAFTERRECORDING_NONE,
+                mIsNetPlay:true,
+                mPausePlayGame:true
             },
         },
         list:[
@@ -341,6 +384,8 @@ function GameModes() {
                     model:"standard",
                     introText:"LET'S DRAG & FALL",
                     blocks:DEFAULT_BLOCKS,
+                    hasHighScores:true,
+                    quickSaveEnabled:true,
                     setColors:2,
                     setGarbageColors:2,
                     fieldWidth:8,
@@ -553,6 +598,8 @@ function GameModes() {
                     model:"timed",
                     introText:"Gotta go fast!",
                     blocks:DEFAULT_BLOCKS,
+                    hasHighScores:true,
+                    quickSaveEnabled:true,
                     setColors:2,
                     setGarbageColors:2,
                     fieldWidth:8,
@@ -620,6 +667,8 @@ function GameModes() {
                     model:"standard",
                     introText:"Go! Go! Go!",
                     blocks:LINE_BLOCKS,
+                    hasHighScores:true,
+                    quickSaveEnabled:true,
                     setColors:2,
                     setGarbageColors:2,
                     fieldWidth:8,
@@ -829,6 +878,8 @@ function GameModes() {
                     model:"survival",
                     introText:"They are coming!",
                     blocks:DEFAULT_BLOCKS,
+                    hasHighScores:true,
+                    quickSaveEnabled:true,
                     setColors:2,
                     setGarbageColors:2,
                     fieldWidth:8,
@@ -1026,6 +1077,8 @@ function GameModes() {
                     vsYouPunishmentTrack:[ [ 5000, 3 ], [ 15000, 3 ] ],
                     garbageBlocks:LINE_BLOCKS,
                     blocks:DEFAULT_BLOCKS,
+                    hasHighScores:true,
+                    quickSaveEnabled:true,
                     setColors:2,
                     setGarbageColors:2,
                     fieldWidth:8,
@@ -1122,6 +1175,8 @@ function GameModes() {
                     model:"chill",
                     introText:"Stack & Relax",
                     blocks:DEFAULT_BLOCKS,
+                    hasHighScores:true,
+                    quickSaveEnabled:true,
                     setColors:2,
                     setGarbageColors:2,
                     fieldWidth:8,
@@ -1170,6 +1225,80 @@ function GameModes() {
                 progress:[
                     TRACK_SHATTERBLOCK
                 ]
+            },{
+                id:"vs",
+                version:1,
+                shortId:"vs",
+                label:"VS. mode",
+                initialize:{
+                    model:"netPlay",
+                    introText:"May the best win!",
+                    garbageAutoDropAmount:3,
+                    vsYouRecordingLength:1,
+                    garbageBlocks:LINE_BLOCKS,
+                    blocks:DEFAULT_BLOCKS,
+                    hasHighScores:false,
+                    quickSaveEnabled:false,
+                    setColors:2,
+                    setGarbageColors:2,
+                    fieldWidth:8,
+                    fieldHeight:16,
+                    colorGems:true,
+                    playMusic:"track7",
+                    autoDrop:3,
+                    autoDropAmount:3,
+                    allClearAutoDrop:3,
+                    allClearAutoDropAmount:3,
+                    quickDropActive:true,
+                    quickDropThreshold:8,
+                    quickDropAutoDrops:3,
+                    quickDropAutoDropsAmount:3,
+                    quickDropColor:{ r:51, g:51, b:51 },
+                    quickDropShadowColor:{ r:0, g:0, b:0 },
+                    quickDropFontColor:{ r:255, g:255, b:255 },
+                    quickDropDisabledColor:{ r:17, g:17, b:17 },
+                    quickDropFontDisabledColor:{ r:51, g:51, b:51 },
+                    setTimeLimit:10000,
+                    setTimeLimitIsFall:true,
+                    linesPerLevel:5,
+                    levelCap:30,
+                    setBlocksPerDrop:[ 2 ],
+                    setGarbageBlocksPerDrop:[ 2 ],
+                    footerbarColorBorder:"#858585",
+                    footerbarColor:"#282828",
+                    footerbarColorText:{ r:255, g:255, b:255 },
+                    gameoverColor:{ r:40, g:40, b:40 },
+                    gameoverColorBorder:{ r:133, g:133, b:133 },
+                    timebarBasicHeight:TIMEBAR_BASICHEIGHT,
+                    timebarColor:TIMEBAR_COLOR,
+                    timebarColorCritical:TIMEBAR_COLOR_CRITICAL,
+                    rowtextColor: ROWTEXT_COLOR,
+                    rowtextColorShadow: { r:0, g:0, b:0 },
+                    warningRows: WARNING_ROWS,
+                    gameoverLines: GAMEOVER_YOULOSE,
+                    gameoverSound: "gameover",
+                    gameclearLines: GAMEOVER_YOUWIN,
+                    palette:DEFAULT_PALETTE_4,
+                    levelMultiplierRatio: 0.2,
+                    lineClearColor: LINECLEAR_COLOR,
+                    particlesLineClearColor: { r:255, g:255, b:255 },
+                    particlesFallColor:{ r:128, g:128, b:128 },
+                    cursorColor:CURSORCOLOR_DEFAULT,
+                    cursorColorDrag:CURSORCOLOR_DRAG_DEFAULT,
+                    hostSettings:{
+                        setIdleStyle:[ { r:COLOR_OFF, g:COLOR_OFF, b:COLOR_BRIGHT }, { r:COLOR_BRIGHT, g:COLOR_BRIGHT, b:COLOR_BRIGHT }, 0.001, 0, 1, 0.4 ],
+                        setBackgroundAnimation:8
+                    },
+                    guestSettings:{
+                        setIdleStyle:[ { r:COLOR_BRIGHT, g:COLOR_OFF, b:COLOR_OFF }, { r:COLOR_BRIGHT, g:COLOR_BRIGHT, b:COLOR_BRIGHT }, -0.001, 0, 1, 0.4 ],
+                        setBackgroundAnimation:9
+                    }
+                },
+                progress:[
+                    TRACK_SHATTERBLOCK,
+                    TRACK_LOCKEDBLOCK,
+                    TRACK_LONGBLOCK
+                ],
             }
         ]
     };

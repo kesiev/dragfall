@@ -168,6 +168,17 @@ Someone on Reddit asked for multiple control schemes, so I've added keyboard and
     <p>When using buttons, you play by moving a blinking cursor around the grid</p>
 </div>
 
+### The NetPlay
+
+I'm not getting much feedback on this game... but that won't stop me from adding more things. Although the _Yinyang mode_ is designed to challenge yourself, there is a mode that is essential when facing a rival/friend. Ever since the days of the Game Boy, players have been battling it out by hurling trash at each other in block-based puzzle games. Now that feature is here, too.
+
+<div align="center" style="margin:60px 0">
+    <p><img src="markdown/title4.png"></p>
+    <p>The VS. Mode</p>
+</div>
+
+Ages ago, in [PvP](https://github.com/kesiev/pvp), I added LAN multiplayer up to 4 players using [PeerJS](https://peerjs.com/) to trade bullets with my wife and nephews. This time I'm adding a classic 1-on-1 _VS. Mode_ to challenge my wife once again, this time in vanilla JavaScript, using `RTCPeerConnection`, and a dash of PHP to let peers exchange offers via Room ID. It's a bit rushed, but it should be flexible enough for me to add even more 2-player modes in the future. Maybe.
+
 ### The extras
 
 The game works natively on multiple resolutions with optional scaling, fullscreen, offline, and it can be installed on your device. I wanted to be able to _always_ stack.
