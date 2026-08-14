@@ -55,8 +55,6 @@ function Field(width, height) {
                         done.isNotSet(dx, dy)
                     ) {
                         blockProcessing = true;
-                        if (!field[dy] || !field[dy][dx]) // TODO: Remove when the random broken piece bug disappeared.
-                            debugger;
                         cells.push({ x:dx, y:dy, cell:field[dy][dx] });
                         done.set(dx, dy);
                         blockGrid.set(dx, dy);
