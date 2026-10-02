@@ -21,7 +21,7 @@ function Particles() {
             if (list.length < LIMIT)
                 list.push({ duration:duration, type:TYPE_LINEAR, color:color, hsize:Math.floor(size/2), size:size, x:x, y:y, dx:size*dx, dy:size*dy })
         },
-        render:(e, ctx, width, height)=>{
+        render:(e, ctx, width, height, lowdrama, drama)=>{
             if ((width!=prevWidth) || (height != prevHeight)) {
                 prevWidth = width;
                 prevHeight = height;
@@ -62,8 +62,8 @@ function Particles() {
                         }
                     }
 
-                    ctx.fillStyle = "rgba("+p.color.r+","+p.color.g+","+p.color.b+","+(1-time/p.duration)+")";
-                    ctx.fillRect(Math.floor(x-p.hsize), Math.floor(y-p.hsize), p.size,p.size);
+                    ctx.fillStyle = "rgba("+Math.max(255,p.color.r*drama)+","+Math.max(255,p.color.g*drama)+","+Math.max(255,p.color.b*drama)+","+(1-time/p.duration)+")";
+                    ctx.fillRect(Math.floor(x-p.hsize*drama), Math.floor(y-p.hsize*drama), p.size*drama,p.size*drama);
                 }
             }
         }

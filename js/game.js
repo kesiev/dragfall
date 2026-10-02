@@ -16,7 +16,7 @@ function Game() {
         GAME_LOCALSTORAGE = "_DRAGFALL",
         GAME_STATE_LOCALSTORAGE = "_DRAGFALL_S",
         GAME_NAME = "DRAGFALL",
-        GAME_VERSION = "0.4.5",
+        GAME_VERSION = "0.4.6",
         GAME_FOOTER = [ "Drag up-down", "Hit to select", "v"+GAME_VERSION+" by KesieV" ],
         GAME_CREDITS_MUSIC = "track2",
         GAME_GITHUB = "http://github.com/kesiev/dragfall",
@@ -135,6 +135,7 @@ function Game() {
             "Bianca",
             "Preuk",
             "Dymonika",
+            "KeronCyst",
         ],
         ERROR_GENERAL = "Something went wrong!",
         // --- Netplay
@@ -325,6 +326,7 @@ function Game() {
         audio, nextMusic,
         // --- Time calculation & scheduler
         timeStartE, gameE = 0, playE = 0, lastE = 0, isPlayNotPaused = true,
+        gameEffectsBoost = 0, gameTimeWarp = 0, gameTimeWarpAt = 0, gameDramaIntensity = 1, gameHighDramaIntensity = 1, gameLowDramaIntensity = 0, dramaticMode = false,
         scheduler = [],
         // --- Game state
         gameState = GAMESTATE_LOADING,
@@ -1309,6 +1311,14 @@ function Game() {
                         gotoOptions(option);
                     }
                 },{
+                    label:[ "Dramatic mode", settings.dramaticMode ? "ON" : "OFF" ],
+                    onSelect:(menu, option)=>{
+                        settings.dramaticMode = !settings.dramaticMode;
+                        saveSettings();
+                        applySettings();
+                        gotoOptions(option);
+                    }
+                },{
                     
                     label:[ "BG Quality", BACKGROUND_QUALITY[settings.bgquality].label ],
                     onSelect:(menu, option)=>{
@@ -1516,6 +1526,23 @@ function Game() {
             if (timeStartE) {
                 let
                     delta = e-timeStartE;
+
+                if (gameTimeWarp) {
+                    gameTimeWarpAt += delta;
+                    if (gameTimeWarpAt >= gameTimeWarp) {
+                        gameDramaIntensity = 1;
+                        gameHighDramaIntensity = 1;
+                        gameLowDramaIntensity = 0;
+                        gameTimeWarp = 0;
+                    } else {
+                        let
+                            ratio = gameTimeWarpAt/gameTimeWarp;
+                        delta *= ratio < 0.05 ? 1.1 : Math.sin(ratio);
+                        gameDramaIntensity = 1+((1-ratio)*gameEffectsBoost);
+                        gameHighDramaIntensity = 1+((1-ratio)*gameEffectsBoost*2);
+                        gameLowDramaIntensity = (1-ratio)*gameEffectsBoost;
+                    }
+                }
                 gameE += delta;
                 if (isPlayNotPaused)
                     playE += delta;
@@ -1669,14 +1696,14 @@ function Game() {
                         }
                     }
 
-                    backgroundAnimation.render(gameE, ctx, canvasWidth, canvasHeight, brightness);
+                    backgroundAnimation.render(gameE, ctx, canvasWidth, canvasHeight, brightness * gameHighDramaIntensity);
                     
                     ctx.filter = "none";
                     ctx.fillStyle = BACKGROUND_COLOR;
                     ctx.fillRect(boardX, boardY, boardWidth, boardHeight);
                 }
 
-                fieldEffects.render(ctx, gameE, gridX, gridY, effectsGameOverProgress);
+                fieldEffects.render(ctx, gameE, gridX, gridY, effectsGameOverProgress, gameLowDramaIntensity, gameDramaIntensity);
 
                 if (isWarning || incomingGarbage) {
                     ctx.fillStyle = "rgba(255,0,0,"+(0.3+opacity)+")";
@@ -1686,13 +1713,13 @@ function Game() {
                 if (field)
                     blitField(gameE, shakeX, shakeY, field, 1-gameoverProgress);
 
-                overFieldEffects.render(ctx, gameE, gridX, gridY, effectsGameOverProgress);
+                overFieldEffects.render(ctx, gameE, gridX, gridY, effectsGameOverProgress, gameLowDramaIntensity, gameDramaIntensity);
                 if (shadowBlock)
                     blitBlock(gameE, shakeX, shakeY, shadowBlock, true);
                 if (movingBlock)
                     blitBlock(gameE, shakeX, shakeY, movingBlock);
 
-                particles.render(gameE, ctx, canvasWidth, canvasHeight);
+                particles.render(gameE, ctx, canvasWidth, canvasHeight, gameLowDramaIntensity, gameDramaIntensity);
 
                 rowTextEffects.forEach((line,id)=>{
                     if (line) {
@@ -2297,6 +2324,7 @@ function Game() {
         colorGems = mode.initialize.colorGems;
         hasHighScores = mode.initialize.hasHighScores;
         quickSaveEnabled = mode.initialize.quickSaveEnabled;
+        dramaticMode = settings.dramaticMode && mode.initialize.setDramaticMode;
 
         switch (hostguest) {
             case NETPLAY_NEWGAMEHOST:{
@@ -2338,6 +2366,11 @@ function Game() {
         score = 0;
         playE = 0;
         gameE = 0;
+        gameTimeWarp = 0;
+        gameTimeWarpAt = 0;
+        gameDramaIntensity = 1;
+        gameHighDramaIntensity = 1;
+        gameLowDramaIntensity = 0;
         deltaScore = 0;
         shakeXEnd = 0;
         shakeYEnd = 0;
@@ -2454,6 +2487,18 @@ function Game() {
             }
         if (mIsNetPlay)
             NETPLAY.send({ s:failed ? NETPLAYSIGNAL_LOSE : NETPLAYSIGNAL_WIN })
+    }
+
+    function doDramatic(level) {
+        if (dramaticMode) {
+            let
+                effect = level >= dramaticMode.length ? dramaticMode[dramaticMode.length-1] : dramaticMode[level];
+            if (effect) {
+                gameTimeWarpAt = 0;
+                gameTimeWarp = effect.slowdown || 0;
+                gameEffectsBoost = effect.boost || 0;
+            }
+        }
     }
 
     function doQuickDrop() {
@@ -2783,6 +2828,7 @@ function Game() {
                 })
                 if (shatterSfx)
                     audio.playAudio(audio.audio.break);
+                doDramatic(combo);
                 audio.playAudio(audio.audio.line, false, 0, 1+Math.min(2,combo*0.2));
                 commitScore();
                 schedule(gameRemoveLines,300);
@@ -3742,6 +3788,9 @@ function Game() {
 
         if (settings.bganimations === undefined)
             settings.bganimations = true;
+
+        if (settings.dramaticMode === undefined)
+            settings.dramaticMode = true;
 
         GAMEMODES.list.forEach((mode,id)=>{
             if (!settings.stats[mode.id] || (mode.initialize.hasHighScores && (settings.stats[mode.id].highScore === undefined)))

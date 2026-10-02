@@ -6,6 +6,10 @@ function FieldEffects(isSolid, isIdleAnimation, field) {
     let
         cellWidth,
         cellHeight,
+        dramaWidth,
+        dramaWidth2,
+        dramaHeight,
+        dramaHeight2,
         padding,
         fieldWidth = field.width,
         fieldHeight = field.height,
@@ -90,9 +94,21 @@ function FieldEffects(isSolid, isIdleAnimation, field) {
             effectWidth = cellWidth-(padding*2);
             effectHeight = cellHeight-(padding*2);
         },
-        render:(ctx, e, ox, oy, opacity)=>{
+        render:(ctx, e, ox, oy, opacity, lowdrama, drama)=>{
             let
                 color;
+
+            if (lowdrama) {
+                dramaWidth = cellWidth*lowdrama;
+                dramaWidth2 = dramaWidth*0.5;
+                dramaHeight = cellHeight*lowdrama;
+                dramaHeight2 = dramaHeight*0.5;
+            } else {
+                dramaWidth = 0;
+                dramaWidth2 = 0;
+                dramaHeight = 0;
+                dramaHeight2 = 0;
+            }
 
             for (let y=0;y<fieldHeight;y++)
                 for (let x=0;x<fieldWidth;x++) {
@@ -147,7 +163,7 @@ function FieldEffects(isSolid, isIdleAnimation, field) {
                                 }
                             }
                         }
-                        color = "rgba("+Math.min(255,Math.max(r*opacity,0))+","+Math.min(255,Math.max(g*opacity,0))+","+Math.min(255,Math.max(b*opacity,0))+","+Math.min(1,Math.max(a*opacity,0))+")";
+                        color = "rgba("+Math.min(255,Math.max(r*opacity*drama,0))+","+Math.min(255,Math.max(g*opacity*drama,0))+","+Math.min(255,Math.max(b*opacity*drama,0))+","+Math.min(1,Math.max(a*opacity,0))+")";
                         if (gl) {
                             ctx.shadowColor = color;
                             ctx.shadowBlur = gl;
@@ -158,7 +174,7 @@ function FieldEffects(isSolid, isIdleAnimation, field) {
                         }
                         if (isSolid) {
                             ctx.fillStyle = color;
-                            ctx.fillRect(ox+x*cellWidth+padding, oy+y*cellHeight+padding, effectWidth, effectHeight);
+                            ctx.fillRect(ox+x*cellWidth+padding-dramaWidth2, oy+y*cellHeight+padding-dramaHeight2, effectWidth+dramaWidth, effectHeight+dramaHeight);
                         } else {
                             ctx.strokeStyle = color;
                             ctx.lineWidth = outline;

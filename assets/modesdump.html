@@ -125,6 +125,8 @@
             out.push([ "Color gems", action.colorGems ? "Enabled" : "Disabled" ]);
         if (action.blocks !== undefined)
             out.push([ "Blocks", action.blocks.map(b=>dumpPattern(b.pattern)).join(" ") ]);
+        if (action.setDramaticMode !== undefined) 
+            out.push([ "Dramatic mode", action.setDramaticMode ? "<ul><li>"+action.setDramaticMode.map((v,pos)=>pos+" line"+(pos==1?"":"s")+": "+(v ? (v.slowdown/1000)+" sec. slowdown, "+Math.floor(v.boost*100)+"% effects boost" : "<i>No effect</i>")).join("</li><li>")+"</li></ul>" : "No" ]);
         if (action.setColors !== undefined)
             out.push([ "Colors", action.setColors+" type(s)" ]);
         if (action.setGarbageColors !== undefined)
