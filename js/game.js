@@ -16,7 +16,7 @@ function Game() {
         GAME_LOCALSTORAGE = "_DRAGFALL",
         GAME_STATE_LOCALSTORAGE = "_DRAGFALL_S",
         GAME_NAME = "DRAGFALL",
-        GAME_VERSION = "0.4.4",
+        GAME_VERSION = "0.4.5",
         GAME_FOOTER = [ "Drag up-down", "Hit to select", "v"+GAME_VERSION+" by KesieV" ],
         GAME_CREDITS_MUSIC = "track2",
         GAME_GITHUB = "http://github.com/kesiev/dragfall",
@@ -2113,6 +2113,9 @@ function Game() {
     }
 
     function formatTime(time) {
+        let
+            dsec, sec, min, hours;
+
         time = Math.floor(time/10);
         dsec = time%100;
         time = Math.floor(time/100);
@@ -2768,7 +2771,7 @@ function Game() {
                             shatterEffectAtCell(cell);
                             shatterSfx = true;
                         })
-                        effectsCache.shatteredColors[effect.shatterColor] = true;
+                        effectsCache.shatteredColumns[cell.x] = true;
                         // --- Hilight column
                         for (let y=0;y<field.height;y++)
                             overFieldEffects.addHilight(false, cell.x, y, 800, effect.effectColor.r, effect.effectColor.g, effect.effectColor.b, 20);

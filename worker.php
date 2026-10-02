@@ -43,7 +43,7 @@ foreach ($paths as $path) {
     array_push($out,substr($files[$i],$rootPathLength));
 }
 
-?>var CACHE = 'dragfall-cache-v0.4.4-0';
+?>var CACHE = 'dragfall-cache-v0.4.5-0';
 var precacheFiles = <?php echo json_encode($out) ?>;
 
 self.addEventListener('install', function(evt) {

@@ -141,7 +141,7 @@ function NetPlay(settings) {
                 onconnect(btoa(JSON.stringify(rtcp.localDescription)));
         };
 
-        channel = rtcp.createDataChannel(NETPLAY_CHANNEL, { ordered: false, maxRetransmits: 0 });
+        channel = rtcp.createDataChannel(NETPLAY_CHANNEL, { ordered: true, maxRetransmits: 0 });
         manageChannel(channel);
 
         rtcp.createOffer((offer)=>{

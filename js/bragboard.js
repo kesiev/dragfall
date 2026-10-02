@@ -558,25 +558,6 @@ function BragBoard(settings) {
         stopScan();
     }
 
-    function toggleTorch() {
-        try {
-            if (scanStream) {
-                if (window.ImageCapture) {
-                const track = scanStream.getVideoTracks()[0];
-                    const imageCapture = new ImageCapture(track)
-                    const photoCapabilities = imageCapture.getPhotoCapabilities().then(() => {
-                    try {
-                        track.applyConstraints({ advanced: [{torch: to}] })
-                            .then(e=>{callback()})
-                            .catch(e => {})
-                    } catch (e) {}
-                    });
-                }
-            }
-        } catch (e) {}
-    }
-
-
     return {
         initialize:()=>{
             let
@@ -598,7 +579,7 @@ function BragBoard(settings) {
             bragBoard.s = bragBoard.s.filter(s=>{
                 let
                     mode = getScoreGameMode(s);
-                if (s.v != mode.mode.version) {
+                if (!mode || (s.v != mode.mode.version)) {
                     cleaned++;
                     return false;
                 } else
