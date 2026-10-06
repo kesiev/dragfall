@@ -62,7 +62,7 @@ function Particles() {
                         }
                     }
 
-                    ctx.fillStyle = "rgba("+Math.max(255,p.color.r*drama)+","+Math.max(255,p.color.g*drama)+","+Math.max(255,p.color.b*drama)+","+(1-time/p.duration)+")";
+                    ctx.fillStyle = "rgba("+Math.min(255,p.color.r+lowdrama*200)+","+Math.min(255,p.color.g+lowdrama*200)+","+Math.min(255,p.color.b+lowdrama*200)+","+(1-time/p.duration)+")";
                     ctx.fillRect(Math.floor(x-p.hsize*drama), Math.floor(y-p.hsize*drama), p.size*drama,p.size*drama);
                 }
             }
