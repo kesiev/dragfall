@@ -153,6 +153,17 @@ I've created [something](js/background.js) to wrap these code chunks and use the
 
 _The original authors are in the credits, and I hope this little tribute will please them. However, I'm not entirely sure what license these snippets are under. If you'd like me to remove (or include) your animation, please contact me!_
 
+#### A pinch of drama
+
+[Someone](https://github.com/KeronCyst) posted an intriguing [request](https://github.com/kesiev/dragfall/issues/3) on GitHub, asking for some _dramatic effects_ on good plays. Sadly, I haven't received any notification about that, and it got lost for a few days. I've added some bullet time, brighter and larger particles, and a pulsating background.
+
+<div align="center" style="margin:60px 0">
+    <p><img src="markdown/dramatic.gif"></p>
+    <p>The longer the combo, the more the effects</p>
+</div>
+
+It uses of the [particles](js/particles.js), [field effects](js/fieldeffect.js), and [background](js/background.js) parameters I already implemented. I left out the [text sparks](js/textspark.js) since the effect wasn't cool and readable enough. The UI, gameplay, and VFX timer split I made for the _40-Lines mode_ also came in handy, as I applied different scales to them to create the slowdown effect.
+
 ### The music
 
 Oh, my beloved [The Mod Archive](https://modarchive.org/). I've looked for some nice `.XM` tunes there and used the [jsxm](ttps://github.com/a1k0n/jsxm) library to play them. I love club, acid, and funky atmospheres depending on the expected block stacking pace. Hope you'll like it too.
