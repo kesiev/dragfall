@@ -166,7 +166,7 @@ It uses of the [particles](js/particles.js), [field effects](js/fieldeffect.js),
 
 ### The music
 
-Oh, my beloved [The Mod Archive](https://modarchive.org/). I've looked for some nice `.XM` tunes there and used the [jsxm](ttps://github.com/a1k0n/jsxm) library to play them. I love club, acid, and funky atmospheres depending on the expected block stacking pace. Hope you'll like it too.
+Oh, my beloved [The Mod Archive](https://modarchive.org/). I've looked for some nice `.XM` tunes there and used the [jsxm](https://github.com/a1k0n/jsxm) library to play them. I love club, acid, and funky atmospheres depending on the expected block stacking pace. Hope you'll like it too.
 
 _Authors are in the credits, and songs should be under the [Mod Archive Distribution license](https://modarchive.org/index.php?terms-upload). If you'd like me to remove (or include) your song, please contact me!_
 
